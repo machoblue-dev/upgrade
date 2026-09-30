@@ -92,7 +92,7 @@
 
   /* ---------- 머리(로그인 뒤) ---------- */
   function topHTML() {
-    return '<header class="topbar"><a class="brand" href="#home" aria-label="처음 화면">UP:GRADE</a><span class="sp"></span>' +
+    return '<header class="topbar"><a class="brand" href="#home" aria-label="처음 화면">UP<span class="c">:</span>GRADE</a><span class="sp"></span>' +
       (isAdmin() ? '<a class="tb" href="#admin">관리</a>' : '') +
       '<a class="tb" href="#me">내 정보</a></header>' + subjHTML();
   }
@@ -105,21 +105,25 @@
 
   /* ---------- 로그인 · 가입 ---------- */
   function brandHead() {
-    return '<header class="brandhead"><img src="img/logo.png" alt="학문당시스템학원 조은희시스템영어" width="260" height="34">' +
-      '<h1>UP:GRADE</h1><p>학문당 시험 복습</p></header>';
+    return '<header class="brandhead"><div class="wordmark"><h1>UP<span class="c">:</span>GRADE</h1><span class="wtile" aria-hidden="true">복습</span></div>' +
+      '<p>학문당 시험 복습</p><img src="img/logo.png" alt="학문당시스템학원 조은희시스템영어" width="260" height="34"></header>';
+  }
+  /* 로그인 · 가입 전환 — 보카꾹 로그인 화면과 같은 두 칸 단추 */
+  function authSeg(cur) {
+    return '<nav class="authseg" aria-label="로그인 또는 가입"><a href="#login"' + (cur === 'login' ? ' aria-current="page"' : '') + '>로그인</a>' +
+      '<a href="#signup"' + (cur === 'signup' ? ' aria-current="page"' : '') + '>처음이에요 (가입)</a></nav>';
   }
   function fld(label, control, hint) {
     return '<label class="fld"><span>' + label + '</span>' + control + (hint ? '<small>' + hint + '</small>' : '') + '</label>';
   }
   function loginHTML() {
     return '<section class="auth">' + brandHead() +
-      '<form class="card form" id="loginform" novalidate><h2 class="sec-h">로그인</h2>' +
+      '<form class="card form" id="loginform" novalidate>' + authSeg('login') + '<h2 class="sec-h">로그인</h2>' +
       fld('메일(아이디)', '<input type="email" name="email" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false">') +
       fld('비밀번호', '<input type="password" name="pw" autocomplete="current-password">') +
       '<p class="msg" id="login-msg" role="alert">' + esc(A.flash) + '</p>' +
       '<button class="btn" type="submit">로그인</button></form>' +
-      '<p class="alt">처음이면 <a href="#signup">가입하기</a></p>' +
-      '<p class="hint center">비밀번호를 잊으면 선생님께 말해 주세요. 새 비밀번호를 정해 드려요.</p></section>';
+      '<p class="hint center top-gap">비밀번호를 잊으면 선생님께 말해 주세요. 새 비밀번호를 정해 드려요.</p></section>';
   }
   function schoolOpts() {
     return '<option value="">학교를 골라 주세요</option>' + A.schools.map(function (s) {
@@ -128,7 +132,7 @@
   }
   function signupHTML() {
     return '<section class="auth">' + brandHead() +
-      '<form class="card form" id="signupform" novalidate><h2 class="sec-h">가입하기</h2>' +
+      '<form class="card form" id="signupform" novalidate>' + authSeg('signup') + '<h2 class="sec-h">가입하기</h2>' +
       fld('이름', '<input name="name" autocomplete="name" maxlength="20">', '실제 이름을 적어 주세요(2~20자)') +
       fld('학교', '<select name="school">' + schoolOpts() + '</select>' +
         (A.schools.length ? '' : '<button type="button" class="link-btn" data-act="schools-again">학교 목록 다시 받기</button>')) +
@@ -142,8 +146,7 @@
       '<p>동의하지 않으면 가입할 수 없어요.</p></div>' +
       '<label class="agree"><input type="checkbox" name="agree" id="agree"><span>위 내용에 동의해요</span></label>' +
       '<p class="msg" id="signup-msg" role="alert"></p>' +
-      '<button class="btn" type="submit" id="signup-btn" disabled>가입하기</button></form>' +
-      '<p class="alt">이미 가입했으면 <a href="#login">로그인</a></p></section>';
+      '<button class="btn" type="submit" id="signup-btn" disabled>가입하기</button></form></section>';
   }
   function fillSchoolSelect() {
     var sel = document.querySelector('#signupform select[name="school"]');

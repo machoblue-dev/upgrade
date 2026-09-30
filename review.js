@@ -172,10 +172,16 @@ var Review = (function () {
     }).join('') + '</div>' : '';
     var y = 해();
     var 제목 = String(D['제목'] || '').replace(/폰\s*복습/g, '복습');   // 폰복습 데이터의 「영어 폰 복습」 — 앱에서는 「영어 복습」
+    /* 머리 카드 아래 전체 진도 — 다섯 갈래 진도를 더한 것(첫 화면 진도 카드와 같은 셈) */
+    var 합 = 0, 전체 = 0;
+    progress().forEach(function (x) { 합 += x.n; 전체 += x.N; });
+    var 진도 = 전체 ? '<div class="hero-prog"><div class="hp-row"><span>전체 진도</span><span>' + 합 + ' / ' + 전체 + '</span></div>' +
+      '<span class="hp-bar" aria-hidden="true"><i style="width:' + Math.round(합 * 100 / 전체) + '%"></i></span></div>' : '';
     return '<header class="hero">' +
       '<div class="hero-top"><span class="logo"><img src="img/logo.png" alt="학문당시스템학원 조은희시스템영어" width="184" height="24"></span>' +
       '<span class="kicker"><span class="lat">Review</span> · 시험 복습</span></div>' +
-      '<div class="hero-main"><h1><small>' + (y ? y + ' · ' : '') + esc(D['학교표시']) + '</small>' + safe(제목) + '</h1>' + dbox + '</div>' +
+      '<div class="hero-card"><div class="hero-main"><h1><small>' + (y ? y + ' · ' : '') + esc(D['학교표시']) + '</small>' + safe(제목) + '</h1>' + dbox + '</div>' +
+      진도 + '</div>' +
       '</header>' +
       '<section class="glance" aria-label="시험 한눈에">' + 문항 +
       '<ul class="g-src">' + (D['범위'] || []).map(function (x) {
