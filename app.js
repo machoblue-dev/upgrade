@@ -57,9 +57,14 @@
 
   /* ---------- 띠 · 워터마크 · 알림 ---------- */
   function kakao() { return /KAKAOTALK/i.test(navigator.userAgent || ''); }
-  function kakaoClosed() { try { return sessionStorage.getItem('upgrade-kakao-x') === '1'; } catch (e) { return false; } }
+  var kakaoX = false;   // 닫았다는 표시 — 저장소가 막힌 브라우저에서도 이 화면에서는 닫힌 채로 둔다
+  function kakaoClosed() { if (kakaoX) return true; try { return sessionStorage.getItem('upgrade-kakao-x') === '1'; } catch (e) { return false; } }
   function barsHTML() {
     var out = '';
+    if (newApp) {
+      out += '<div class="bar up" role="status"><p>새 내용이 있어요. 새로 고침을 눌러 주세요.</p>' +
+        '<button class="bar-x" data-act="app-reload">새로 고침</button></div>';
+    }
     if (kakao() && !kakaoClosed()) {
       out += '<div class="bar kakao" role="note"><p>카카오톡 안에서 열면 로그인이 유지되지 않을 수 있어요. 오른쪽 위 메뉴에서 다른 브라우저로 열어 주세요</p>' +
         '<button class="bar-x" data-act="kakao-x">닫기</button></div>';
@@ -123,6 +128,9 @@
       fld('비밀번호', '<input type="password" name="pw" autocomplete="current-password">') +
       '<p class="msg" id="login-msg" role="alert">' + esc(A.flash) + '</p>' +
       '<button class="btn" type="submit">로그인</button></form>' +
+      /* 저장소가 다 막혀(메모리 방식) 열 때마다 다시 로그인해야 하는 브라우저 — 까닭과 푸는 길을 알린다 */
+      (Store.mode() === 'mem' ? '<p class="memnote" role="note">이 브라우저는 로그인이 유지되지 않아요. 열 때마다 다시 로그인해 주세요. ' +
+        '아이폰은 Safari 설정에서 <b>「모든 쿠키 차단」</b>을 끄면 유지돼요.</p>' : '') +
       '<p class="hint center top-gap">비밀번호를 잊으면 선생님께 말해 주세요. 새 비밀번호를 정해 드려요.</p></section>';
   }
   function schoolOpts() {
@@ -452,11 +460,25 @@
       '<p class="sheet-n"><span id="rep-n">0</span> / 1000</p><p class="msg" id="rep-msg" role="alert"></p>' +
       '<div class="sheet-btns"><button class="btn ghost" data-act="rep-x">닫기</button><button class="btn" data-act="rep-send" id="rep-send">보내기</button></div></div>';
     $sheet.hidden = false;
+    fitSheet();
     document.body.classList.add('modal-open');
     setTimeout(function () { var t = document.getElementById('rep-body'); if (t) t.focus(); }, 30);
   }
+  /* 글자판이 올라와도 화면 높이는 그대로인 폰(아이폰 등)은 창 아래 「보내기」가 글자판에 가린다 — 눈에 보이는 부분에 창을 맞춘다 */
+  function fitSheet() {
+    var vv = window.visualViewport;
+    if (!vv || $sheet.hidden) return;
+    $sheet.style.top = vv.offsetTop + 'px';
+    $sheet.style.bottom = 'auto';
+    $sheet.style.height = vv.height + 'px';
+  }
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', fitSheet);
+    window.visualViewport.addEventListener('scroll', fitSheet);
+  }
   function closeReport() {
     $sheet.hidden = true; $sheet.innerHTML = ''; A.rep = null;
+    $sheet.removeAttribute('style');
     document.body.classList.remove('modal-open');
     if (A.dirty) softRender();
   }
@@ -544,6 +566,12 @@
   }
 
   /* ---------- 앱 판 확인 — version.json 이 다르면 새로 고친다(같은 판으로 두 번 돌지 않는다) ---------- */
+  var newApp = false;   // 새 앱 판이 있는데 「새로 고쳤다」 표시를 적어 둘 곳이 없다 — 띠로 알리고 학생이 누를 때 새로 고친다
+  async function reloadNow() {
+    saveUi(true);
+    try { await Promise.race([Sync.flush(), wait(2000)]); } catch (e) { /* 남은 체크는 폰에 있다 */ }
+    location.reload();
+  }
   async function checkVersion() {
     try {
       var r = await fetch('version.json?t=' + Date.now(), { cache: 'no-store' });
@@ -554,10 +582,11 @@
       var tried = '';
       try { tried = sessionStorage.getItem('upgrade-reload') || ''; } catch (e) { /* 없으면 빈 글 */ }
       if (tried === v) return;
-      try { sessionStorage.setItem('upgrade-reload', v); } catch (e) { /* 못 적어도 한 번은 새로 고친다 */ }
-      saveUi(true);
-      try { await Promise.race([Sync.flush(), wait(2000)]); } catch (e) { /* 남은 체크는 폰에 있다 */ }
-      location.reload();
+      var marked = false;
+      try { sessionStorage.setItem('upgrade-reload', v); marked = sessionStorage.getItem('upgrade-reload') === v; } catch (e) { /* 적어 둘 곳이 없다 */ }
+      /* 표시를 못 적으면 새로 고친 뒤에도 또 새로 고쳐 끝없이 돈다(261007 흉내 — 6초에 126번) */
+      if (!marked) { if (!newApp) { newApp = true; drawBars(); } return; }
+      await reloadNow();
     } catch (e) { /* 끊겼으면 다음에 */ }
   }
 
@@ -581,7 +610,8 @@
       case 'rep': ev.preventDefault(); openReport(b.getAttribute('data-key'), b.getAttribute('data-label')); return;
       case 'rep-x': closeReport(); return;
       case 'rep-send': sendReport(); return;
-      case 'kakao-x': try { sessionStorage.setItem('upgrade-kakao-x', '1'); } catch (e) { /* 이 화면에서만 닫는다 */ } drawBars(); return;
+      case 'kakao-x': kakaoX = true; try { sessionStorage.setItem('upgrade-kakao-x', '1'); } catch (e) { /* 이 화면에서만 닫는다 */ } drawBars(); return;
+      case 'app-reload': reloadNow().catch(noop); return;
       case 'pv-end': endPreview(); return;
       case 'banner-ok':
         if (A.pack && A.profile) Store.set('seen:' + uid() + '|' + A.profile.school + '|' + A.subject, A.pack.hash).catch(noop);
