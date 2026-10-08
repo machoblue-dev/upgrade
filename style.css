@@ -4,7 +4,9 @@
    대표 색은 --coral 한 벌이 정한다(이름은 옛 빨강 때 것 그대로다) — 바꿀 때는 :root 의 --coral 다섯 칸과 머리 카드 --hero-a · --hero-b 둘을 간다.
    틀림 · 다시 보기 · 위험 단추는 대표 색이 아니라 --re 한 벌(빨강)을 쓴다 — 대표 색을 바꿔도 빨강이 남아야 하는 곳이다.
    다섯 갈래는 제 색이 있다 — 지문 파랑(대표 색) · 핵심 문장 초록 · 서술형 보라 · 어법 주황 · 단어 노랑(.tab · .pcard 의 href · data-tab 으로 가른다).
-   한 가지 밝은 톤으로 고정한다(폰이 어두운 화면 설정이어도 같다).
+   0.3.0 어두운 화면이 기본이다(보카꾹과 같다 · 261008 강사 지시) — html[data-theme="dark"] 가 색 칸을 갈아 끼운다. 밝은 화면은 내 정보에서 고르고
+   폰에 남는다(index.html 첫 줄 스크립트가 첫 그림 전에 정한다). 폰의 어두운 화면 설정은 따르지 않는다 — 보카꾹처럼 앱 안 스위치 하나가 정한다.
+   색을 새로 쓸 때는 글자에 바로 박지 말고 :root 와 dark 두 곳에 칸을 만든다. 노란 바탕 위 글자는 --on-yellow, 반전 칸(눌린 칩 · 알림)은 --inv · --on-inv 다.
    뒷부분(「앱」 절부터)은 앱에만 있는 것 — 띠 · 머리 · 로그인·가입 · 첫 화면 진도 · 내 정보 · 틀린 곳 알리기 · 알림 · 워터마크 · 관리자 */
 :root{
   --bg:#FFFDF6; --surface:#FFFFFF; --sunk:#FBF7EF; --sunk2:#F7F4EC; --ink:#1F2033; --ink2:#4A4658; --muted:#8B8496; --faint:#B9B3C2;
@@ -12,18 +14,37 @@
   --coral:#1A84E0; --coral-ink:#1466B8; --coral-edge:#0F5AA8; --coral-wash:#EAF4FD; --coral-line:#CFE6FA;
   --hero-a:#12B5E8; --hero-b:#2458E6;
   --teal:#00C389; --teal-ink:#00A37E; --teal-edge:#008F6C; --teal-wash:#EDF9F4; --teal-line:#C9EEDF;
-  --plum:#6E6BF0; --plum-edge:#4F4CC9; --plum-wash:#F0EFFE;
+  --plum:#6E6BF0; --plum-edge:#4F4CC9; --plum-wash:#F0EFFE; --plum-ink:#4F4CC9;
   --amber:#F07B1D; --amber-edge:#C85F0E; --amber-wash:#FFF1E4;
-  --yellow:#FFC839; --yellow-edge:#E8A200; --yellow-wash:#FFF7E2; --yellow-ink:#8A6400;
+  --yellow:#FFC839; --yellow-edge:#E8A200; --yellow-wash:#FFF7E2; --yellow-ink:#8A6400; --yellow-line:#FFE9AE; --on-yellow:#1F2033;
   --hl:#FFE39A;
   --ok:#00A37E; --ok-wash:#EDF9F4; --re:#E03A2E; --re-wash:#FFF0EE; --re-edge:#C22F24; --re-line:#FFDBD7;
-  --shadow:0 2px 10px rgba(60,40,20,.05); --pop:0 10px 30px rgba(60,40,20,.14);
+  --inv:#1F2033; --on-inv:#FFFFFF; --btn2:#1F2033; --on-btn2:#FFFFFF; --btn2-edge:#0E0F1C;
+  --scrim:rgba(31,32,51,.45); --wm:rgba(31,32,51,.18);
+  --shadow:0 2px 10px rgba(60,40,20,.05); --pop:0 10px 30px rgba(60,40,20,.14); --hero-shadow:0 8px 20px rgba(36,88,230,.28);
   --sans:"Pretendard",-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;
   --serif:"Literata",Georgia,"Times New Roman",serif;
   --mono:"Pretendard",-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
   color-scheme:light;
 }
-html,body{background:#FFFDF6}
+/* 어두운 화면 — 푸른 기가 도는 짙은 회색 바탕. 채운 단추(파랑 · 초록 · 주황 · 빨강)는 흰 글자가 3:1 넘게 읽히는 값으로,
+   글자로 쓰는 칸(-ink)은 밝게, 옅은 바탕(-wash)은 반투명으로 둔다 */
+html[data-theme="dark"]{
+  --bg:#0F1218; --surface:#181C24; --sunk:#13171E; --sunk2:#232934; --ink:#EDF0F6; --ink2:#C3C9D5; --muted:#8E96A6; --faint:#666E7E;
+  --line:#252B36; --line2:#333A48;
+  --coral:#1A84E0; --coral-ink:#78BDFF; --coral-edge:#0E4A86; --coral-wash:rgba(56,152,240,.14); --coral-line:rgba(56,152,240,.38);
+  --teal:#0FA47A; --teal-ink:#4FD7AF; --teal-edge:#08573F; --teal-wash:rgba(32,190,140,.12); --teal-line:rgba(32,190,140,.34);
+  --plum:#6E6BF0; --plum-edge:#38359E; --plum-wash:rgba(120,116,245,.16); --plum-ink:#AEACFF;
+  --amber:#DC6C12; --amber-edge:#7E3C06; --amber-wash:rgba(240,123,29,.15);
+  --yellow:#FFC839; --yellow-edge:#A87500; --yellow-wash:rgba(255,200,57,.11); --yellow-ink:#FFD56E; --yellow-line:rgba(255,200,57,.30);
+  --hl:rgba(255,200,57,.36);
+  --ok:#3DD0A0; --ok-wash:rgba(32,190,140,.14); --re:#E5483D; --re-wash:rgba(229,72,61,.16); --re-edge:#7A1F18; --re-line:rgba(229,72,61,.45);
+  --inv:#E6EAF2; --on-inv:#10131A; --btn2:#2D3443; --on-btn2:#EDF0F6; --btn2-edge:#090B10;
+  --scrim:rgba(0,0,0,.62); --wm:rgba(237,240,246,.13);
+  --shadow:none; --pop:0 12px 32px rgba(0,0,0,.55); --hero-shadow:none;
+  color-scheme:dark;
+}
+html,body{background:var(--bg)}
 
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
@@ -45,13 +66,22 @@ a{color:inherit;text-decoration:none}
 .kicker{font-size:12.5px;font-weight:700;color:var(--muted);white-space:nowrap}
 .kicker .lat{font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--coral)}
 .hero-card{position:relative;overflow:hidden;border-radius:24px;padding:18px 18px 16px;color:#fff;
-  background:linear-gradient(135deg,var(--hero-a),var(--hero-b));box-shadow:0 8px 20px rgba(36,88,230,.28);display:grid;gap:14px}
+  background:linear-gradient(135deg,var(--hero-a),var(--hero-b));box-shadow:var(--hero-shadow);display:grid;gap:14px}
 .hero-card::after{content:"";position:absolute;right:-56px;top:-56px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.12);pointer-events:none}
+/* 어두운 화면의 머리 카드 — 보카꾹처럼 대표 색을 옅게 깐 카드에 테두리 */
+html[data-theme="dark"] .hero-card{background:linear-gradient(150deg,rgba(18,181,232,.26),rgba(36,88,230,.14));border:1px solid rgba(86,166,246,.34)}
+html[data-theme="dark"] .hero-card::after{background:rgba(255,255,255,.05)}
+html[data-theme="dark"] .hero h1 small{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.24)}
+html[data-theme="dark"] .hp-bar{background:rgba(255,255,255,.1)}
+/* 로고 — 밝은 화면은 검은 글자 판, 어두운 화면은 밝은 글자 판(img/logo-dark.png) */
+.logo-d{display:none!important}
+html[data-theme="dark"] .logo-l{display:none!important}
+html[data-theme="dark"] .logo-d{display:block!important}
 .hero-main{display:flex;align-items:flex-start;justify-content:space-between;gap:12px 14px;position:relative;z-index:1}
 .hero h1{margin:0;font-size:clamp(26px,7.6vw,36px);font-weight:900;line-height:1.16;letter-spacing:-.035em;text-wrap:balance;color:#fff;min-width:0}
 .hero h1 small{display:table;font-size:12.5px;font-weight:700;letter-spacing:0;margin-bottom:10px;color:#fff;
   background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.38);border-radius:999px;padding:2px 11px}
-.dbox{flex:0 0 auto;border-radius:16px;padding:8px 12px 9px;background:var(--yellow);color:var(--ink);text-align:center;min-width:92px;
+.dbox{flex:0 0 auto;border-radius:16px;padding:8px 12px 9px;background:var(--yellow);color:var(--on-yellow);text-align:center;min-width:92px;
   box-shadow:0 4px 0 var(--yellow-edge);transform:rotate(5deg);margin-top:4px}
 .dbox .l{display:block;font-size:11.5px;font-weight:700;line-height:1.3}
 .dbox .n{display:block;font-weight:900;font-size:28px;line-height:1.1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
@@ -68,7 +98,7 @@ a{color:inherit;text-decoration:none}
 .g-cell .k{display:block;font-size:12px;font-weight:700;color:var(--muted)}
 .g-cell b{font-size:18px;font-weight:900;letter-spacing:-.02em;white-space:nowrap}
 .g-cell span.p{font-size:13.5px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--coral-ink);margin-left:6px;white-space:nowrap}
-.g-cell:nth-child(2) span.p{color:var(--plum-edge)}
+.g-cell:nth-child(2) span.p{color:var(--plum-ink)}
 .g-src{list-style:none;margin:0;padding:0;display:grid;gap:4px;font-size:14px;color:var(--ink2)}
 .g-src b{font-weight:800;color:var(--ink);margin-right:6px}
 .g-src .c{font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap}
@@ -94,7 +124,7 @@ a{color:inherit;text-decoration:none}
 .chips{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;margin-inline:-16px;padding:14px 16px 10px}
 .chips::-webkit-scrollbar{display:none}
 .chip{flex:0 0 auto;border:1.5px solid var(--line2);border-radius:999px;padding:6px 13px;font-size:13.5px;font-weight:700;line-height:1.2;white-space:nowrap;background:var(--surface);color:var(--ink2)}
-.chip[aria-pressed="true"],.chip[aria-current="page"]{background:var(--ink);border-color:var(--ink);color:#fff}
+.chip[aria-pressed="true"],.chip[aria-current="page"]{background:var(--inv);border-color:var(--inv);color:var(--on-inv)}
 .intro{font-size:14px;color:var(--muted);margin:2px 0 6px;line-height:1.55}
 #view>.intro:first-child{margin-top:12px}
 
@@ -125,7 +155,7 @@ a{color:inherit;text-decoration:none}
 .eyebrow{font-size:13px;font-weight:800;color:var(--coral-ink);margin:0}
 .phead h2{margin:6px 0 0;font-size:clamp(23px,6.4vw,28px);font-weight:900;line-height:1.3;letter-spacing:-.03em;text-wrap:balance}
 .phead .en-t{margin:6px 0 0;font-family:var(--serif);font-style:italic;color:var(--muted);font-size:16px}
-.gist{margin-top:16px;background:var(--yellow-wash);border:1px solid #FFE9AE;border-radius:16px;padding:14px 16px}
+.gist{margin-top:16px;background:var(--yellow-wash);border:1px solid var(--yellow-line);border-radius:16px;padding:14px 16px}
 .lab{display:block;font-size:12px;font-weight:800;color:var(--coral-ink);letter-spacing:.02em;margin-bottom:4px}
 .gist .lab{color:var(--yellow-ink)}
 .gist p{margin:0;font-size:15.5px;line-height:1.65}
@@ -216,7 +246,7 @@ mark{background:linear-gradient(transparent 56%,var(--hl) 56%);color:inherit;pad
 .prompt{margin:10px 0 0}
 .blank{display:inline-block;width:5.2em;height:1em;border-bottom:2px solid var(--ink2);vertical-align:-2px;margin:0 2px}
 .kw{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:baseline;margin-top:10px;font-size:13px;color:var(--muted)}
-.kw b{font-family:var(--serif);font-size:15.5px;color:var(--ink);font-weight:600;background:var(--yellow-wash);border:1px solid #FFE9AE;border-radius:7px;padding:1px 8px}
+.kw b{font-family:var(--serif);font-size:15.5px;color:var(--ink);font-weight:600;background:var(--yellow-wash);border:1px solid var(--yellow-line);border-radius:7px;padding:1px 8px}
 .expr{margin:10px 0 0;padding:11px 13px;border-radius:13px;background:var(--sunk)}
 .mean{margin:8px 0 0;font-size:14.5px}
 .ko-q{margin:0;font-size:16.5px;font-weight:800;line-height:1.55;letter-spacing:-.01em}
@@ -233,8 +263,8 @@ mark{background:linear-gradient(transparent 56%,var(--hl) 56%);color:inherit;pad
 .cond{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:4px}
 .cond li{font-size:13.5px;color:var(--ink2);padding-left:16px;position:relative;line-height:1.5}
 .cond li::before{content:"";position:absolute;left:0;top:.45em;width:8px;height:8px;border:2px solid var(--coral);border-radius:50%}
-.reveal{margin-top:14px;width:100%;min-height:48px;border-radius:14px;background:var(--ink);color:#fff;font-weight:900;font-size:15px;text-align:center;
-  box-shadow:0 4px 0 #0E0F1C}
+.reveal{margin-top:14px;width:100%;min-height:48px;border-radius:14px;background:var(--btn2);color:var(--on-btn2);font-weight:900;font-size:15px;text-align:center;
+  box-shadow:0 4px 0 var(--btn2-edge)}
 .ans{margin-top:14px;border-top:1.5px dashed var(--line2);padding-top:12px}
 .ans .en{font-size:16.5px;font-weight:500}
 .orig{margin:8px 0 0;font-size:13.5px;color:var(--muted)}
@@ -278,7 +308,7 @@ mark{background:linear-gradient(transparent 56%,var(--hl) 56%);color:inherit;pad
 .flash .df{font-family:var(--serif);font-size:15.5px;color:var(--ink2);line-height:1.55}
 .flash .wd{font-family:var(--serif);font-size:24px;font-weight:600}
 .flash .from{font-size:12.5px;color:var(--muted)}
-.flash .badge{display:inline-block;font-family:var(--sans);font-size:11.5px;font-weight:800;letter-spacing:0;line-height:1.5;color:var(--yellow-ink);background:var(--yellow-wash);border:1px solid #FFE9AE;border-radius:999px;padding:0 8px;margin-left:8px;vertical-align:.35em}
+.flash .badge{display:inline-block;font-family:var(--sans);font-size:11.5px;font-weight:800;letter-spacing:0;line-height:1.5;color:var(--yellow-ink);background:var(--yellow-wash);border:1px solid var(--yellow-line);border-radius:999px;padding:0 8px;margin-left:8px;vertical-align:.35em}
 .judge.big button{min-height:54px;font-size:15.5px}
 .listtoggle{margin-top:16px;font-size:13.5px;font-weight:800;color:var(--coral-ink);min-height:36px}
 .wtable{margin-top:8px}
@@ -309,11 +339,15 @@ mark{background:linear-gradient(transparent 56%,var(--hl) 56%);color:inherit;pad
 /* ---- 띠(카톡 · 끊김 · 미리보기) ---- */
 .bar{display:flex;align-items:flex-start;gap:10px;padding:10px 16px;font-size:13.5px;line-height:1.5}
 .bar p{margin:0;flex:1;min-width:0}
-.bar.kakao{background:var(--yellow-wash);color:var(--ink2);border-bottom:1px solid #FFE9AE}
+.bar.kakao{background:var(--yellow-wash);color:var(--ink2);border-bottom:1px solid var(--yellow-line);flex-wrap:wrap}
 .bar.net{background:var(--sunk2);color:var(--ink2)}
-.bar.pv{background:var(--ink);color:#fff}
+.bar.pv{background:var(--inv);color:var(--on-inv)}
 .bar.up{background:var(--teal-wash);color:var(--ink2);border-bottom:1px solid var(--teal-line)}
-.bar-x{flex:0 0 auto;min-height:32px;padding:0 10px;border-radius:9px;border:1.5px solid currentColor;font-size:12.5px;font-weight:800}
+.bar-x{flex:0 0 auto;display:inline-flex;align-items:center;min-height:32px;padding:0 10px;border-radius:9px;border:1.5px solid currentColor;font-size:12.5px;font-weight:800;white-space:nowrap}
+/* 카톡 띠 — 글은 한 줄을 다 쓰고, 단추 둘은 그 아래 오른쪽에 */
+.bar.kakao p{flex-basis:100%}
+.bar-btns{display:flex;gap:8px;margin-left:auto}
+.bar-x.go{background:var(--coral);border-color:var(--coral);color:#fff}
 
 /* ---- 머리(로그인 뒤) ---- */
 .topbar{display:flex;align-items:center;flex-wrap:wrap;gap:6px;min-height:50px}
@@ -369,7 +403,7 @@ mark{background:linear-gradient(transparent 56%,var(--hl) 56%);color:inherit;pad
 .agree{display:flex;align-items:center;gap:10px;min-height:44px;font-weight:800;font-size:15px;cursor:pointer}
 .agree input{width:22px;height:22px;margin:0;flex:0 0 auto;accent-color:var(--coral)}
 .top-gap{margin-top:14px}
-.memnote{margin:14px 0 0;padding:10px 14px;border-radius:14px;background:var(--yellow-wash);border:1px solid #FFE9AE;color:var(--ink2);font-size:13.5px;line-height:1.55}
+.memnote{margin:14px 0 0;padding:10px 14px;border-radius:14px;background:var(--yellow-wash);border:1px solid var(--yellow-line);color:var(--ink2);font-size:13.5px;line-height:1.55}
 .memnote b{white-space:nowrap}
 
 /* ---- 첫 화면 ---- */
@@ -394,7 +428,7 @@ mark{background:linear-gradient(transparent 56%,var(--hl) 56%);color:inherit;pad
 .pcard[data-tab="dan"]{--tc:var(--yellow);--te:var(--yellow-edge);--tw:var(--yellow-wash);--tx:"단"}
 .pcard::before{content:var(--tx);grid-row:1 / span 3;align-self:start;width:36px;height:36px;border-radius:11px;background:var(--tc);color:#fff;
   display:grid;place-items:center;font-weight:900;font-size:15px;box-shadow:0 3px 0 var(--te)}
-.pcard[data-tab="dan"]::before{color:var(--ink)}
+.pcard[data-tab="dan"]::before{color:var(--on-yellow)}
 .pcard:last-child:nth-child(odd){grid-column:span 2}
 .pc-k{font-size:14px;font-weight:900;color:var(--ink);letter-spacing:-.01em}
 .pc-n{font-size:13px;font-weight:700;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
@@ -421,7 +455,7 @@ mark{background:linear-gradient(transparent 56%,var(--hl) 56%);color:inherit;pad
 .rep-row{margin-top:8px;text-align:right}
 .rep{font-size:12.5px;font-weight:600;color:var(--faint);min-height:34px;padding:0 4px;text-decoration:underline;text-underline-offset:3px}
 .sheet{position:fixed;left:0;right:0;top:0;bottom:0;z-index:60;display:flex;align-items:flex-end;justify-content:center}
-.sheet-bg{position:absolute;left:0;right:0;top:0;bottom:0;background:rgba(31,32,51,.45);cursor:pointer}
+.sheet-bg{position:absolute;left:0;right:0;top:0;bottom:0;background:var(--scrim);cursor:pointer}
 .sheet-card{position:relative;width:100%;max-width:560px;max-height:92%;overflow:auto;background:var(--bg);border-radius:22px 22px 0 0;
   padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));display:grid;gap:10px;box-shadow:var(--pop)}
 .sheet-what{margin:0;font-size:13.5px;color:var(--muted);overflow-wrap:anywhere}
@@ -431,12 +465,12 @@ body.modal-open{overflow:hidden}
 
 /* ---- 알림 · 워터마크 ---- */
 .toast{position:fixed;left:0;right:0;margin:0 auto;bottom:calc(44px + env(safe-area-inset-bottom,0px));width:max-content;max-width:calc(100% - 32px);
-  background:var(--ink);color:#fff;padding:10px 16px;border-radius:14px;font-size:14px;font-weight:700;line-height:1.45;z-index:70;box-shadow:var(--pop);
+  background:var(--inv);color:var(--on-inv);padding:10px 16px;border-radius:14px;font-size:14px;font-weight:700;line-height:1.45;z-index:70;box-shadow:var(--pop);
   pointer-events:none;opacity:0;transform:translateY(12px);transition:opacity .2s ease,transform .2s ease}
 .toast.on{opacity:1;transform:none}
 .toast:empty{display:none}
 .wm{position:fixed;left:0;right:0;bottom:calc(10px + env(safe-area-inset-bottom,0px));text-align:center;font-size:12.5px;font-weight:700;
-  color:rgba(31,32,51,.18);pointer-events:none;z-index:40;letter-spacing:.04em;user-select:none;-webkit-user-select:none;white-space:nowrap;overflow:hidden}
+  color:var(--wm);pointer-events:none;z-index:40;letter-spacing:.04em;user-select:none;-webkit-user-select:none;white-space:nowrap;overflow:hidden}
 
 /* ---- 관리자 ---- */
 .a-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
@@ -444,7 +478,7 @@ body.modal-open{overflow:hidden}
 .anav{padding-top:10px}
 .anav .chip{border-radius:12px;padding:8px 13px}
 .anav .chip[aria-current="page"]{background:var(--coral);border-color:var(--coral);color:#fff;box-shadow:0 3px 0 var(--coral-edge)}
-.a-sum{margin:10px 0;font-size:13.5px;font-weight:700;color:var(--ink2);background:var(--yellow-wash);border:1px solid #FFE9AE;border-radius:12px;padding:8px 12px}
+.a-sum{margin:10px 0;font-size:13.5px;font-weight:700;color:var(--ink2);background:var(--yellow-wash);border:1px solid var(--yellow-line);border-radius:12px;padding:8px 12px}
 .back-l{display:inline-flex;align-items:center;min-height:40px;font-weight:800;color:var(--coral-ink)}
 .scard{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:13px 14px;margin-top:10px;min-width:0;box-shadow:var(--shadow)}
 .scard-h{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
@@ -481,3 +515,54 @@ a.sname{text-decoration:underline;text-underline-offset:4px;text-decoration-colo
 .prow-h .smeta{margin:0}
 .rbody{white-space:pre-wrap;margin:6px 0 0;font-size:15px;overflow-wrap:anywhere}
 .rcard .btn{margin-top:8px}
+
+/* ════════ 0.3.0 — 화면 설정 · 홈 화면 아이콘 · 발음 듣기 ════════ */
+
+/* ---- 내 정보 「화면」 칸 — 줄마다 이름 + 스위치나 단추 ---- */
+.sets{display:grid}
+.setrow{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1.5px dashed var(--line)}
+.setrow:first-child{padding-top:2px}
+.setrow:last-child{border-bottom:0;padding-bottom:0}
+.setrow .sl{flex:1;min-width:0;display:grid;gap:1px}
+.setrow .sl b{font-size:15px;font-weight:800;line-height:1.4}
+.setrow .sl small{font-size:12.5px;color:var(--muted);line-height:1.45}
+.setrow .btn.sm{flex:0 0 auto;white-space:nowrap}
+.sw{flex:0 0 auto;position:relative;width:52px;height:32px;border-radius:999px;background:var(--line2);transition:background-color .15s ease}
+.sw::after{content:"";position:absolute;left:4px;top:4px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.28);transition:transform .15s ease}
+.sw[aria-checked="true"]{background:var(--coral)}
+.sw[aria-checked="true"]::after{transform:translateX(20px)}
+.sendrow{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}
+.sendrow .pend{flex:1 1 200px}
+
+/* ---- 첫 화면 「홈 화면에 아이콘 저장」 카드 ---- */
+.inst{display:grid;grid-template-columns:40px minmax(0,1fr) auto;align-items:center;gap:6px 12px;margin:4px 0 14px;padding:12px 12px 12px 14px;
+  border-radius:16px;background:var(--coral-wash);border:1.5px solid var(--coral-line)}
+.inst img{display:block;width:40px;height:40px;border-radius:10px}
+.inst p{margin:0;min-width:0;font-size:13.5px;color:var(--ink2);line-height:1.45}
+.inst p b{display:block;font-size:15px;font-weight:900;color:var(--coral-ink);letter-spacing:-.01em}
+.inst-btns{display:flex;gap:6px}
+.inst-btns button{min-height:38px;padding:0 12px;border-radius:12px;font-weight:900;font-size:13.5px;white-space:nowrap}
+.inst-btns .go{background:var(--coral);color:#fff;box-shadow:0 3px 0 var(--coral-edge)}
+.inst-btns .x{color:var(--muted);border:1.5px solid var(--line2);background:var(--surface)}
+@media (max-width:380px){
+  .inst{grid-template-columns:40px minmax(0,1fr)}
+  .inst-btns{grid-column:1 / -1;justify-content:flex-end}
+}
+
+/* ---- 아이콘 저장 안내 창(아이폰 · 메뉴로 저장하는 브라우저) ---- */
+.guide .flow{margin-top:4px}
+.guide .flow li{font-size:15px;line-height:1.55;padding-bottom:12px}
+.guide .flow li b{font-weight:900}
+.guide .hint{margin:0}
+
+/* ---- 발음 듣기 ---- */
+.say{display:inline-flex;align-items:center;gap:5px;min-height:34px;padding:0 11px;border-radius:10px;border:1.5px solid var(--line2);
+  background:var(--surface);color:var(--coral-ink);font-size:13px;font-weight:800;box-shadow:0 2px 0 var(--line2);white-space:nowrap}
+.say svg{width:16px;height:16px;flex:0 0 auto}
+.say:active{transform:translateY(2px);box-shadow:none}
+.kcard .say{margin-top:8px}
+.s>.say{display:none;margin:0 8px 10px 44px}
+.s.open>.say{display:inline-flex}
+.flash-wrap{position:relative}
+.flash-wrap .say{position:absolute;right:12px;top:12px;z-index:1}
+.flash-wrap.has-say .flash{padding-right:76px}

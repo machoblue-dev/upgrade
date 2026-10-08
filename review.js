@@ -12,7 +12,8 @@
    · 틀린 곳 알리기 단추 — 지문 한 화면 · 서술형 · 어법 · 단어 카드
    · 시험 이름(중간고사·기말고사)과 해(2026)를 회차·시험일에서 읽는다 — 틀.html 은 글자로 박혀 있었다
    · 단어 출처가 지문에 안 붙은 낱말은 코드나 출처 이름을 쓴다 — 틀.html 은 부교재를 「올림포스」로 박아 두었다
-   · 묶음 차례에 없는 묶음이 있으면 뒤에 붙인다(빠진 지문이 목록에서 사라지지 않게) */
+   · 묶음 차례에 없는 묶음이 있으면 뒤에 붙인다(빠진 지문이 목록에서 사라지지 않게)
+   · 0.3.0 발음 듣기 단추(data-act="say") — 단어 카드 · 핵심 문장(영어를 연 뒤) · 지문 문장(누른 뒤). 읽기는 app.js 가 한다 */
 var Review = (function () {
   'use strict';
   var C = null;                                        // 지금 판 문맥 — setup() 이 만든다
@@ -37,6 +38,24 @@ var Review = (function () {
     });
   }
   function enc(s) { return encodeURIComponent(String(s == null ? '' : s)); }
+  /* 발음 듣기에 넘길 맨글 — 줄바꿈(<br>)은 빈칸으로, 나머지 태그는 걷고, 문자 참조(&#x27; · &amp; …)를 글자로 되돌린다 */
+  function plain(s) {
+    var named = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
+    return String(s == null ? '' : s).replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]*>/g, '').replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, function (m, g) {
+      if (g.charAt(0) === '#') {
+        var n = g.charAt(1) === 'x' || g.charAt(1) === 'X' ? parseInt(g.slice(2), 16) : parseInt(g.slice(1), 10);
+        return n > 0 && n < 0x110000 ? String.fromCodePoint(n) : m;
+      }
+      return Object.prototype.hasOwnProperty.call(named, g.toLowerCase()) ? named[g.toLowerCase()] : m;
+    }).replace(/\s+/g, ' ').trim();
+  }
+  /* 발음 듣기 단추 — 누르면 app.js 가 data-say 글을 읽는다(0.3.0) */
+  var 소리그림 = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>';
+  function sayBtn(text) {
+    var t = plain(text);
+    return t ? '<button class="say" data-act="say" data-say="' + esc(t) + '" aria-label="발음 듣기">' + 소리그림 + '듣기</button>' : '';
+  }
   function U() { return C.env.ui; }
   function saveUi() { if (C.env.saveUi) C.env.saveUi(); }
   function st(key) { return (key && C.env.mark(key)) || ''; }
@@ -178,7 +197,8 @@ var Review = (function () {
     var 진도 = 전체 ? '<div class="hero-prog"><div class="hp-row"><span>전체 진도</span><span>' + 합 + ' / ' + 전체 + '</span></div>' +
       '<span class="hp-bar" aria-hidden="true"><i style="width:' + Math.round(합 * 100 / 전체) + '%"></i></span></div>' : '';
     return '<header class="hero">' +
-      '<div class="hero-top"><span class="logo"><img src="img/logo.png" alt="학문당시스템학원 조은희시스템영어" width="184" height="24"></span>' +
+      '<div class="hero-top"><span class="logo"><img class="logo-l" src="img/logo.png" alt="학문당시스템학원 조은희시스템영어" width="184" height="24">' +
+      '<img class="logo-d" src="img/logo-dark.png" alt="학문당시스템학원 조은희시스템영어" width="184" height="24"></span>' +
       '<span class="kicker"><span class="lat">Review</span> · 시험 복습</span></div>' +
       '<div class="hero-card"><div class="hero-main"><h1><small>' + (y ? y + ' · ' : '') + esc(D['학교표시']) + '</small>' + safe(제목) + '</h1>' + dbox + '</div>' +
       진도 + '</div>' +
@@ -262,7 +282,7 @@ var Review = (function () {
           '<a class="src" href="#p-' + enc(k.p.id) + '">' + esc(k.p['제목']) + ' ›</a></div>' +
           '<p class="ko-line">' + esc(s.ko) + '</p>' +
           '<button class="show" data-act="kshow">영어 문장 보기</button>' +
-          '<div class="en-line" hidden><p class="en" style="margin:0">' + safe(s.html) + '</p></div>' +
+          '<div class="en-line" hidden><p class="en" style="margin:0">' + safe(s.html) + '</p>' + sayBtn(s.html) + '</div>' +
           '<button class="mini" data-act="kdone" aria-pressed="' + on + '">' + (on ? '외웠어요' : '외웠으면 누르기') + '</button>' +
           '</article>';
       });
@@ -399,8 +419,11 @@ var Review = (function () {
         '<div class="judge big"><button data-act="dagain">처음부터</button><button data-act="dre">다시 볼 것만</button></div>';
     }
     var v = L[deck.i], d2w = U().wm === 'd2w';
+    /* 발음 단추는 낱말이 보일 때만 — 「영영정의 → 낱말」은 카드를 뒤집기 전에 읽으면 답이 들린다 */
+    var sb = !d2w || deck.open ? sayBtn(v.en) : '';
     var h = '<div class="deck-top"><span class="count">' + (deck.i + 1) + ' / ' + L.length + '</span><span class="deck-tools">' +
       '<button data-act="dshuf" aria-pressed="' + (!!U().shuffle) + '">' + (U().shuffle ? '섞는 중' : '섞기') + '</button><button data-act="dagain">처음부터</button></span></div>' +
+      '<div class="flash-wrap' + (sb ? ' has-say' : '') + '">' + sb +
       '<button class="flash" data-act="dflip" aria-expanded="' + deck.open + '">';
     if (d2w) h += '<span class="ask">이 풀이에 맞는 낱말은?</span><span class="front def">' + esc(v['정의']) + '</span>';
     else h += '<span class="front">' + esc(v.en) + (v['학교'] ? badge('학교 낱말') : '') + '</span><span class="ask">' + (deck.open ? '' : '먼저 떠올려 보고 카드를 눌러요') + '</span>';
@@ -412,7 +435,7 @@ var Review = (function () {
       if (d2w && v['학교정의']) h += '<span class="from">학교가 준 영영정의예요</span>';
       h += '<span class="from">' + esc(vSrc(v)) + '</span></span>';
     }
-    h += '</button>';
+    h += '</button></div>';
     h += '<div class="judge big"><button data-act="dj" data-v="re">몰라요</button><button data-act="dj" data-v="ok">알아요</button></div>';
     h += repBtn(v.key, '단어 · ' + v.en);
     return h;
@@ -458,6 +481,7 @@ var Review = (function () {
       h += '<div class="s' + (key ? ' key' : '') + (s['새문단'] ? ' para' : '') + '" data-n="' + esc(s.n) + '">' +
         '<button class="s-btn" data-act="sopen" aria-expanded="false"><span class="s-num">' + esc(s.n) + (key ? '<b>★</b>' : '') + '</span>' +
         '<span class="s-body"><span class="s-en en">' + safe(s.html) + '</span><span class="s-ph">영어 문장 보기</span><span class="s-ko">' + esc(s.ko) + '</span></span></button>' +
+        sayBtn(s.html) +
         ((s['짚음'] || []).length ? '<ul class="s-notes">' + s['짚음'].map(function (m) { return '<li><mark class="q">' + esc(m['구']) + '</mark> — ' + esc(m['말']) + '</li>'; }).join('') + '</ul>' : '') +
         '</div>';
     });
@@ -596,7 +620,7 @@ var Review = (function () {
     tabName: tabName, firstTab: firstTab, heroHTML: heroHTML, progress: progress,
     renderTab: renderTab, renderPassage: renderPassage, refreshTabs: refreshTabs, click: click,
     data: function () { return C ? C.D : null; },
-    util: { esc: esc, safe: safe, enc: enc }
+    util: { esc: esc, safe: safe, enc: enc, plain: plain }
   };
 })();
 

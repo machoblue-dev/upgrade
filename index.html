@@ -1,14 +1,33 @@
 <!doctype html>
-<html lang="ko">
+<html lang="ko" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="light">
-<meta name="theme-color" content="#FFFDF6">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0F1218">
 <meta name="robots" content="noindex, nofollow">
 <meta name="format-detection" content="telephone=no">
 <title>UP:GRADE</title>
-<link rel="icon" href="data:,">
+<!-- 홈 화면 아이콘(0.3.0) — 안드로이드는 manifest.json, 아이폰은 apple-touch-icon 을 읽는다 -->
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="img/icon-192.png">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="UP:GRADE">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<!-- 어두운 화면이 기본 — 밝은 화면을 고른 폰만 첫 그림부터 밝게(app.js 의 setTheme 과 같은 저장 이름 · 같은 색) -->
+<script>
+(function () {
+  var t = 'dark';
+  try { if (localStorage.getItem('upgrade-theme') === 'light') t = 'light'; } catch (e) { /* 저장소가 막히면 기본 */ }
+  var d = document.documentElement;
+  d.setAttribute('data-theme', t);
+  var m = document.querySelector('meta[name="theme-color"]'), c = document.querySelector('meta[name="color-scheme"]');
+  if (m) m.content = t === 'light' ? '#FFFDF6' : '#0F1218';
+  if (c) c.content = t;
+})();
+</script>
 <!-- 글꼴 — Pretendard(jsDelivr 동적 조각판) · 영어 본문 Literata · 숫자 JetBrains Mono. 못 받으면 기본 글꼴로 나온다
      글꼴 CSS 는 화면 그리기를 막지 않게 media="print" 로 받고 다 오면 all 로 바꾼다 — 글꼴 사이트가 대답을 안 해도 앱이 기본 글꼴로 바로 뜬다(261007 흉내) -->
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
@@ -21,7 +40,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600&amp;family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600;1,7..72,400&amp;display=swap">
 </noscript>
 <!-- 앱 파일 꼬리 ?v= 는 config.js 의 APP_VERSION · version.json 의 v 와 같이 올린다 -->
-<link rel="stylesheet" href="style.css?v=0.2.3">
+<link rel="stylesheet" href="style.css?v=0.3.0">
 </head>
 <body>
 <div id="bars"></div>
@@ -30,12 +49,12 @@
 <div class="sheet" id="sheet" hidden></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <noscript><p class="empty">이 화면은 자바스크립트가 켜져 있어야 열려요.</p></noscript>
-<script src="config.js?v=0.2.3"></script>
-<script src="store.js?v=0.2.3"></script>
-<script src="api.js?v=0.2.3"></script>
-<script src="sync.js?v=0.2.3"></script>
-<script src="review.js?v=0.2.3"></script>
-<script src="admin.js?v=0.2.3"></script>
-<script src="app.js?v=0.2.3"></script>
+<script src="config.js?v=0.3.0"></script>
+<script src="store.js?v=0.3.0"></script>
+<script src="api.js?v=0.3.0"></script>
+<script src="sync.js?v=0.3.0"></script>
+<script src="review.js?v=0.3.0"></script>
+<script src="admin.js?v=0.3.0"></script>
+<script src="app.js?v=0.3.0"></script>
 </body>
 </html>

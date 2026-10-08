@@ -5,7 +5,9 @@
      → 진도 받아 합치기 → 못 보낸 체크 보내기
    · 화면으로 돌아올 때: 앱 판(version.json)과 공개 판을 다시 본다. 새 판이면 「새 내용이 있어요」 띠
    · 떠날 때(visibilitychange hidden): 모아 둔 체크를 보낸다
-   · 카톡 안 브라우저 띠 · 끊김 띠 · 미리보기 띠 · 맨 아래 옅은 「○○○ 학생용」 */
+   · 카톡 안 브라우저 띠 · 끊김 띠 · 미리보기 띠 · 맨 아래 옅은 「○○○ 학생용」
+   · 0.3.0(보카꾹에서 가져온 것) — 어두운 화면 기본 · 밝은 화면 스위치 · 홈 화면에 아이콘 저장(설치 창 · 안내 창 · 첫 화면 카드 · sw.js) ·
+     카톡 띠의 「다른 브라우저로 열기」 · 내 정보 「지금 보내기」 · 영어 발음 듣기(단어 카드 · 핵심 문장 · 지문 문장) */
 (function () {
   'use strict';
   var $app = document.getElementById('app');
@@ -55,8 +57,108 @@
     uiTimer = setTimeout(function () { Store.set(k, v).catch(noop); }, 400);
   }
 
+  /* ---------- 어두운 화면 · 밝은 화면(0.3.0) ----------
+     어두운 화면이 기본이다(보카꾹과 같다). 밝은 화면을 고르면 이 폰에 남고 index.html 첫 스크립트가 첫 그림 전에 읽는다 —
+     저장 이름(upgrade-theme)과 머리 색(#FFFDF6 · #0F1218)은 그 스크립트와 같아야 한다. 저장소가 막힌 브라우저는 이 화면에서만 바뀐다 */
+  function theme() { return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark'; }
+  function setTheme(t) {
+    t = t === 'light' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', t);
+    var m = document.querySelector('meta[name="theme-color"]'), c = document.querySelector('meta[name="color-scheme"]');
+    if (m) m.content = t === 'light' ? '#FFFDF6' : '#0F1218';
+    if (c) c.content = t;
+    try { if (t === 'light') localStorage.setItem('upgrade-theme', 'light'); else localStorage.removeItem('upgrade-theme'); } catch (e) { /* 이 화면에서만 */ }
+  }
+
+  /* ---------- 홈 화면에 아이콘 저장(0.3.0 · 보카꾹 「홈 화면에 설치」) ----------
+     · 브라우저가 설치 창을 줄 수 있으면(beforeinstallprompt — 안드로이드 크롬 · 삼성 인터넷) 「저장하기」가 그 창을 띄운다.
+       크롬은 sw.js 가 있어야 이 창을 준다
+     · 아이폰 · 그 밖 — 공유 단추나 메뉴에서 「홈 화면에 추가」를 누르는 차례를 창으로 보여 준다
+     · 카카오톡 안에서는 저장이 안 된다 — 다른 브라우저로 여는 링크를 준다
+     · 홈 화면 아이콘으로 열었으면(standalone) 안내를 모두 감춘다 · 첫 화면 카드는 닫으면 다시 안 띄운다(내 정보 줄은 남는다) */
+  var installEvt = null;
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); installEvt = e; });
+  window.addEventListener('appinstalled', function () {
+    installEvt = null;
+    instHide();
+    toast('홈 화면에 아이콘을 저장했어요');
+    var h = hash();
+    if (A.session && (h === 'home' || h === 'me')) softRender(true);
+  });
+  function standalone() { return !!((window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true); }
+  function ios() { var u = navigator.userAgent || ''; return /iphone|ipad|ipod/i.test(u) || (/Macintosh/.test(u) && navigator.maxTouchPoints > 1); }
+  var instX = false;
+  function instClosed() { if (instX) return true; try { return localStorage.getItem('upgrade-inst-x') === '1'; } catch (e) { return false; } }
+  function instHide() { instX = true; try { localStorage.setItem('upgrade-inst-x', '1'); } catch (e) { /* 이 화면에서만 */ } }
+  function instCardHTML() {
+    if (standalone() || kakao() || instClosed() || A.preview) return '';
+    return '<div class="inst" role="note"><img src="img/icon-192.png" alt="" width="40" height="40"><p><b>홈 화면에 아이콘 저장</b>앱처럼 바로 열 수 있어요.</p>' +
+      '<div class="inst-btns"><button class="go" data-act="inst">저장하기</button><button class="x" data-act="inst-x">닫기</button></div></div>';
+  }
+  async function doInstall() {
+    if (!installEvt) { openGuide(); return; }
+    var ev = installEvt;
+    installEvt = null;                                   // 설치 창은 한 번만 띄울 수 있다 — 브라우저가 다음에 새로 준다
+    try {
+      ev.prompt();
+      var c = await ev.userChoice;
+      if (c && c.outcome === 'accepted') { instHide(); var card = document.querySelector('.inst'); if (card) card.remove(); }
+    } catch (e) { openGuide(); }
+  }
+  function guideHTML() {
+    var steps = ios()
+      ? ['Safari 아래쪽(아이패드는 위쪽)의 <b>공유 단추</b>(네모에 위 화살표)를 눌러요.', '목록에서 <b>「홈 화면에 추가」</b>를 누르고 오른쪽 위 <b>「추가」</b>를 눌러요.',
+        '홈 화면의 <b>UP:GRADE</b> 아이콘으로 열어요. 처음 열 때 한 번 더 로그인해요.']
+      : ['브라우저 오른쪽 위나 아래의 <b>메뉴 단추</b>(⋮ 또는 ≡)를 눌러요.', '<b>「홈 화면에 추가」</b>나 <b>「앱 설치」</b>를 눌러요.', '홈 화면의 <b>UP:GRADE</b> 아이콘으로 열어요.'];
+    return '<div class="sheet-bg" data-act="sheet-x"></div><div class="sheet-card guide" role="dialog" aria-modal="true" aria-labelledby="guide-h">' +
+      '<h2 id="guide-h" class="sec-h">홈 화면에 아이콘 저장</h2><ol class="flow">' + steps.map(function (s) { return '<li>' + s + '</li>'; }).join('') + '</ol>' +
+      (ios() ? '<p class="hint">Safari 에서 하면 가장 잘 돼요.</p>' : '') +
+      '<button class="btn" data-act="sheet-x">알겠어요</button></div>';
+  }
+  function openGuide() {
+    $sheet.innerHTML = guideHTML();
+    $sheet.hidden = false;
+    fitSheet();
+    document.body.classList.add('modal-open');
+  }
+
+  /* ---------- 발음 듣기(0.3.0 · 보카꾹과 같은 방식) ----------
+     폰에 든 영어 목소리로 읽는다(미국 영어 · 조금 천천히). 목소리를 못 내는 브라우저(카톡 안 등)는 알림으로 알린다 */
+  var voice = null;
+  function pickVoice() {
+    try {
+      var vs = window.speechSynthesis.getVoices() || [];
+      var f = function (re, name) { for (var i = 0; i < vs.length; i++) if (re.test(vs[i].lang) && (!name || name.test(vs[i].name))) return vs[i]; return null; };
+      voice = f(/en[-_]US/i, /Samantha|Google US|Aria|Jenny|Zira/i) || f(/en[-_]US/i) || f(/^en/i);
+    } catch (e) { voice = null; }
+  }
+  if (window.speechSynthesis) {
+    pickVoice();
+    try { window.speechSynthesis.addEventListener('voiceschanged', pickVoice); } catch (e) { window.speechSynthesis.onvoiceschanged = pickVoice; }
+  }
+  function speak(text) {
+    text = String(text || '').trim();
+    if (!text) return;
+    var ss = window.speechSynthesis;
+    if (!ss || typeof window.SpeechSynthesisUtterance !== 'function') {
+      toast(kakao() ? '카카오톡 안에서는 발음이 안 나와요. 다른 브라우저로 열어 주세요' : '이 브라우저에서는 발음이 안 나와요');
+      return;
+    }
+    try {
+      ss.cancel();
+      var u = new window.SpeechSynthesisUtterance(text);
+      u.lang = 'en-US';
+      if (voice) u.voice = voice;
+      u.rate = 0.95;
+      ss.speak(u);
+    } catch (e) { toast('발음을 못 냈어요'); }
+  }
+  function hush() { try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch (e) { /* 그대로 */ } }
+
   /* ---------- 띠 · 워터마크 · 알림 ---------- */
   function kakao() { return /KAKAOTALK/i.test(navigator.userAgent || ''); }
+  /* 카톡 안 브라우저에서 바깥 브라우저로 여는 주소(보카꾹 openInBrowser 와 같다 — 안드로이드 · 아이폰 카톡 모두 받는다) */
+  function outUrl() { return 'kakaotalk://web/openExternal?url=' + encodeURIComponent(location.origin + location.pathname); }
   var kakaoX = false;   // 닫았다는 표시 — 저장소가 막힌 브라우저에서도 이 화면에서는 닫힌 채로 둔다
   function kakaoClosed() { if (kakaoX) return true; try { return sessionStorage.getItem('upgrade-kakao-x') === '1'; } catch (e) { return false; } }
   function barsHTML() {
@@ -66,8 +168,9 @@
         '<button class="bar-x" data-act="app-reload">새로 고침</button></div>';
     }
     if (kakao() && !kakaoClosed()) {
-      out += '<div class="bar kakao" role="note"><p>카카오톡 안에서 열면 로그인이 유지되지 않을 수 있어요. 오른쪽 위 메뉴에서 다른 브라우저로 열어 주세요</p>' +
-        '<button class="bar-x" data-act="kakao-x">닫기</button></div>';
+      out += '<div class="bar kakao" role="note"><p>카카오톡 안에서 열면 로그인이 유지되지 않을 수 있어요. 다른 브라우저로 열어 주세요.</p>' +
+        '<div class="bar-btns"><a class="bar-x go" data-act="open-out" href="' + esc(outUrl()) + '">다른 브라우저로 열기</a>' +
+        '<button class="bar-x" data-act="kakao-x">닫기</button></div></div>';
     }
     if (A.offline) out += '<div class="bar net" role="status"><p>인터넷이 끊겨 있어요. 받아 둔 자료로 보여 드리고, 체크는 모아 두었다가 보내요.</p></div>';
     if (A.preview) {
@@ -111,7 +214,8 @@
   /* ---------- 로그인 · 가입 ---------- */
   function brandHead() {
     return '<header class="brandhead"><div class="wordmark"><h1>UP<span class="c">:</span>GRADE</h1><span class="wtile" aria-hidden="true">복습</span></div>' +
-      '<p>학문당 시험 복습</p><img src="img/logo.png" alt="학문당시스템학원 조은희시스템영어" width="260" height="34"></header>';
+      '<p>학문당 시험 복습</p><img class="logo-l" src="img/logo.png" alt="학문당시스템학원 조은희시스템영어" width="260" height="34">' +
+      '<img class="logo-d" src="img/logo-dark.png" alt="학문당시스템학원 조은희시스템영어" width="260" height="34"></header>';
   }
   /* 로그인 · 가입 전환 — 보카꾹 로그인 화면과 같은 두 칸 단추 */
   function authSeg(cur) {
@@ -405,7 +509,7 @@
     if (A.banner && !A.preview) {
       out += '<div class="newbar" role="status"><p><b>새 내용이 있어요</b>선생님이 자료를 새로 올렸어요.</p><button data-act="banner-ok">확인</button></div>';
     }
-    return out + Review.heroHTML() + progressHTML() + continueHTML();
+    return out + instCardHTML() + Review.heroHTML() + progressHTML() + continueHTML();
   }
 
   /* ---------- 내 정보 ---------- */
@@ -415,15 +519,37 @@
       '<dl class="info"><div><dt>이름</dt><dd>' + esc(p.name || '') + '</dd></div>' +
       '<div><dt>학교</dt><dd>' + esc(schoolLabel(p.school)) + '</dd></div>' +
       '<div><dt>메일</dt><dd>' + esc(p.email || (s.user && s.user.email) || '') + '</dd></div></dl>' +
+      setsHTML() +
       (isAdmin() ? schoolFormHTML(p.school) : '') +
       '<form class="card form" id="pwform" novalidate><h2 class="sec-h">비밀번호 바꾸기</h2>' +
       fld('새 비밀번호', '<input type="password" name="pw" autocomplete="new-password">', '6자 이상') +
       fld('한 번 더', '<input type="password" name="pw2" autocomplete="new-password">') +
       '<p class="msg" id="pw-msg" role="alert"></p><button class="btn" type="submit">비밀번호 바꾸기</button></form>' +
       '<div class="card form"><h2 class="sec-h">로그아웃</h2><p class="hint">이 폰에서 나가요. 다시 들어올 때는 메일과 비밀번호를 넣어요.</p>' +
-      (n ? '<p class="pend" data-pending="' + n + '">아직 못 보낸 체크가 ' + n + '개 있어요. 인터넷이 연결되면 보내요. 로그아웃해도 이 폰에 남아 있다가 다시 로그인하면 보내요.</p>' : '') +
+      (n ? '<div class="sendrow"><p class="pend" data-pending="' + n + '">아직 못 보낸 체크가 ' + n + '개 있어요. 인터넷이 연결되면 보내요. 로그아웃해도 이 폰에 남아 있다가 다시 로그인하면 보내요.</p>' +
+        '<button class="btn ghost sm" data-act="sync-now">지금 보내기</button></div>' : '') +
       '<button class="btn ghost" data-act="logout">로그아웃</button></div>' +
       '<p class="ver">앱 버전 ' + esc(APP_VERSION) + '</p></section>';
+  }
+  /* 「화면」 칸 — 밝은 화면 스위치 · 홈 화면에 아이콘 저장(아이콘으로 열었으면 줄을 안 세운다 · 카톡 안이면 다른 브라우저로 여는 링크) */
+  function setsHTML() {
+    var light = theme() === 'light', inst = '';
+    if (!standalone()) {
+      inst = '<div class="setrow"><span class="sl"><b>홈 화면에 아이콘 저장</b><small>' + (kakao() ? '카카오톡 안에서는 저장할 수 없어요' : '앱처럼 바로 열 수 있어요') + '</small></span>' +
+        (kakao() ? '<a class="btn ghost sm" data-act="open-out" href="' + esc(outUrl()) + '">다른 브라우저로 열기</a>' : '<button class="btn ghost sm" data-act="inst">저장하기</button>') + '</div>';
+    }
+    return '<div class="card form"><h2 class="sec-h">화면</h2><div class="sets">' +
+      '<div class="setrow"><span class="sl"><b>밝은 화면</b><small>어두운 화면이 기본이에요</small></span>' +
+      '<button class="sw" role="switch" aria-checked="' + light + '" aria-label="밝은 화면" data-act="theme"></button></div>' + inst + '</div></div>';
+  }
+  /* 지금 보내기 — 모아 둔 체크를 바로 보낸다(보카꾹 「지금 동기화」) */
+  async function syncNow(btn) {
+    busy(btn, true, '보내는 중이에요');
+    try { await Promise.race([Sync.flush(), wait(8000)]); } catch (e) { /* 아래에서 남은 수를 본다 */ }
+    var n = Sync.pending();
+    busy(btn, false);
+    toast(n ? '아직 못 보냈어요. 인터넷이 연결된 뒤 다시 눌러 주세요' : '다 보냈어요');
+    softRender(true);
   }
   /* 관리자 학교 바꾸기 — 내 계정의 학교를 admin_set_school 로 바꿔 그 학교 공개 판을 학생 화면 그대로 쓴다(261008 강사 지시).
      체크는 학교마다 서버에 따로 남아 다시 돌아오면 이어진다. 못 보낸 체크는 다른 학교로 가면 버려지므로(sync.js flushOnce) 먼저 보낸다 */
@@ -642,6 +768,18 @@
       case 'rep-x': closeReport(); return;
       case 'rep-send': sendReport(); return;
       case 'kakao-x': kakaoX = true; try { sessionStorage.setItem('upgrade-kakao-x', '1'); } catch (e) { /* 이 화면에서만 닫는다 */ } drawBars(); return;
+      case 'open-out': return;                              // 링크 그대로 연다(카톡 → 다른 브라우저)
+      case 'theme': setTheme(theme() === 'light' ? 'dark' : 'light'); b.setAttribute('aria-checked', String(theme() === 'light')); return;
+      case 'inst': doInstall().catch(noop); return;
+      case 'inst-x':
+        instHide();
+        var card = b.closest('.inst');
+        if (card) card.remove();
+        toast('내 정보에서 언제든 저장할 수 있어요');
+        return;
+      case 'sheet-x': closeReport(); return;
+      case 'sync-now': syncNow(b).catch(noop); return;
+      case 'say': speak(b.getAttribute('data-say')); return;
       case 'app-reload': reloadNow().catch(noop); return;
       case 'pv-end': endPreview(); return;
       case 'banner-ok':
@@ -693,11 +831,13 @@
 
   window.addEventListener('hashchange', function () {
     if (Sync.pending()) Sync.flush().catch(noop);         // 탭을 바꿀 때 보낸다
+    hush();                                               // 읽던 발음은 화면을 바꾸면 멈춘다
     render(true);
   });
 
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'hidden') {
+      hush();
       saveUi(true);
       Sync.flush({ keepalive: true }).catch(noop);         // 화면을 떠날 때 보낸다
     } else {
@@ -736,6 +876,14 @@
     go: go, toast: toast, preview: openPreview,
     refresh: function (force) { if (hash().indexOf('admin') === 0) softRender(force); }
   });
+
+  /* ---------- 서비스 워커(sw.js · 0.3.0) — 안드로이드 크롬 설치 창의 조건 · 끊겼을 때 받아 둔 앱 파일로 열기.
+     앱 파일은 늘 인터넷에서 먼저 받는다(sw.js 머리글). 못 올려도 앱은 그대로 돈다 ---------- */
+  function regSW() {
+    if (!('serviceWorker' in navigator) || !window.isSecureContext) return;
+    try { navigator.serviceWorker.register('sw.js').catch(noop); } catch (e) { /* 그대로 */ }
+  }
+  if (document.readyState === 'complete') regSW(); else window.addEventListener('load', regSW);
 
   /* ---------- 열기 ---------- */
   async function boot() {
