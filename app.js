@@ -415,6 +415,7 @@
       '<dl class="info"><div><dt>이름</dt><dd>' + esc(p.name || '') + '</dd></div>' +
       '<div><dt>학교</dt><dd>' + esc(schoolLabel(p.school)) + '</dd></div>' +
       '<div><dt>메일</dt><dd>' + esc(p.email || (s.user && s.user.email) || '') + '</dd></div></dl>' +
+      (isAdmin() ? schoolFormHTML(p.school) : '') +
       '<form class="card form" id="pwform" novalidate><h2 class="sec-h">비밀번호 바꾸기</h2>' +
       fld('새 비밀번호', '<input type="password" name="pw" autocomplete="new-password">', '6자 이상') +
       fld('한 번 더', '<input type="password" name="pw2" autocomplete="new-password">') +
@@ -423,6 +424,36 @@
       (n ? '<p class="pend" data-pending="' + n + '">아직 못 보낸 체크가 ' + n + '개 있어요. 인터넷이 연결되면 보내요. 로그아웃해도 이 폰에 남아 있다가 다시 로그인하면 보내요.</p>' : '') +
       '<button class="btn ghost" data-act="logout">로그아웃</button></div>' +
       '<p class="ver">앱 버전 ' + esc(APP_VERSION) + '</p></section>';
+  }
+  /* 관리자 학교 바꾸기 — 내 계정의 학교를 admin_set_school 로 바꿔 그 학교 공개 판을 학생 화면 그대로 쓴다(261008 강사 지시).
+     체크는 학교마다 서버에 따로 남아 다시 돌아오면 이어진다. 못 보낸 체크는 다른 학교로 가면 버려지므로(sync.js flushOnce) 먼저 보낸다 */
+  function schoolFormHTML(cur) {
+    return '<form class="card form" id="schoolform" novalidate><h2 class="sec-h">학교 바꾸기 (관리자)</h2>' +
+      '<p class="hint">고른 학교의 자료를 학생 화면 그대로 볼 수 있어요. 체크는 학교마다 따로 남아요.</p>' +
+      fld('학교', '<select name="school">' + A.schools.map(function (s) {
+        return '<option value="' + esc(s.name) + '"' + (s.name === cur ? ' selected' : '') + '>' + esc(s.label || s.name) + '</option>';
+      }).join('') + '</select>') +
+      '<p class="msg" id="school-msg" role="alert"></p><button class="btn" type="submit">학교 바꾸기</button></form>';
+  }
+  async function doSchool(form) {
+    if (!isAdmin()) return;
+    var sc = form.elements.school.value, p = A.profile;
+    if (!sc || sc === p.school) return say('school-msg', '지금 학교와 같아요');
+    var btn = form.querySelector('button[type="submit"]');
+    busy(btn, true);
+    try { await Promise.race([Sync.flush(), wait(3000)]); } catch (e) { /* 아래에서 남은 수를 본다 */ }
+    if (Sync.pending()) { busy(btn, false); return say('school-msg', '아직 못 보낸 체크가 있어요. 인터넷이 연결된 뒤 다시 해 주세요'); }
+    try { await Api.rpc('admin_set_school', { uid: uid(), school: sc }); } catch (e) { busy(btn, false); return say('school-msg', Api.words(e)); }
+    try {
+      var rows = await Api.profile(uid());
+      A.profile = (rows && rows[0]) || Object.assign({}, p, { school: sc });
+    } catch (e) { A.profile = Object.assign({}, p, { school: sc }); }
+    await Store.set('profile:' + uid(), A.profile);
+    A.hasLive = null; A.banner = false;
+    await choose(A.ui.subject, true);
+    busy(btn, false);
+    toast('학교를 바꿨어요 — ' + schoolLabel(A.profile.school));
+    go('home');
   }
   async function doPassword(form) {
     var pw = form.elements.pw.value, pw2 = form.elements.pw2.value;
@@ -640,6 +671,7 @@
     if (f.id === 'loginform') doLogin(f);
     else if (f.id === 'signupform') doSignup(f);
     else if (f.id === 'pwform') doPassword(f);
+    else if (f.id === 'schoolform') doSchool(f);
     else Admin.submit(f);
   });
 
