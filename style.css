@@ -255,6 +255,7 @@ mark{background:linear-gradient(transparent 56%,var(--hl) 56%);color:inherit;pad
 .opts li{font-size:1rem;line-height:1.55}
 .opts .ok{font-family:var(--sans);font-weight:900;color:var(--coral-ink);margin-right:6px}
 .opts u{text-decoration-thickness:1.5px;text-underline-offset:3px}
+.under u,.prompt u{text-decoration-thickness:1.5px;text-underline-offset:3px}
 .opts .blank{width:3.6em}
 .opts.ko li{font-family:var(--sans);font-size:15.5px;line-height:1.6;background:var(--sunk);border-radius:12px;padding:8px 12px}
 .bogi{margin-top:12px;padding:10px 12px;border-radius:13px;border:1.5px dashed var(--line2)}

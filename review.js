@@ -292,7 +292,9 @@ var Review = (function () {
   }
 
   /* ---------- 서술형 카드 ---------- */
-  function blankify(s) { return esc(s).replace(/_{3,}/g, '<span class="blank" aria-label="빈칸"></span>'); }
+  /* 밑줄 __말__ — 분석 MD 가 **굵게** 감싼 밑줄 친 말(0.3.1). 앞뒤 밑줄표가 꼭 둘인 것만 — 빈칸 ___ 과 안 섞인다 */
+  function underline(h) { return h.replace(/(^|[^_])__([^_\s](?:[^_]*?[^_\s])?)__(?!_)/g, '$1<u>$2</u>'); }
+  function blankify(s) { return underline(esc(s)).replace(/_{3,}/g, '<span class="blank" aria-label="빈칸"></span>'); }
   /* (ㄱ)~(ㄹ) 고르기 구절 — ___낱말___ 은 밑줄, 앞뒤 띄운 ___ 은 빈칸이다 */
   function optHTML(x) {
     var m = String(x).match(/^(\([ㄱ-ㅎ]\))\s*([\s\S]*)$/), lab = m ? m[1] : '', body = m ? m[2] : String(x);
@@ -312,7 +314,7 @@ var Review = (function () {
     var m = w['모양'];
     if (m === '밑줄') {
       h += '<p class="q">' + esc(w['물음']) + '</p>' +
-        '<div class="under"><span class="lab">' + esc(w['밑줄라벨'] || '밑줄 친 (A)') + '</span><p class="en" style="margin:0">' + esc(w['밑줄문']) + '</p>' +
+        '<div class="under"><span class="lab">' + esc(w['밑줄라벨'] || '밑줄 친 (A)') + '</span><p class="en" style="margin:0">' + underline(esc(w['밑줄문'])) + '</p>' +
         (w['밑줄해석'] ? '<p class="sub-ko" hidden>' + esc(w['밑줄해석']) + '</p><button class="link-btn" data-act="wko">해석 보기</button>' : '') + '</div>';
     } else if (m === '빈칸') {
       h += '<p class="q">' + esc(w['물음']) + '</p><p class="en prompt">' + blankify(w['제시문']) + '</p>' +
@@ -620,7 +622,7 @@ var Review = (function () {
     tabName: tabName, firstTab: firstTab, heroHTML: heroHTML, progress: progress,
     renderTab: renderTab, renderPassage: renderPassage, refreshTabs: refreshTabs, click: click,
     data: function () { return C ? C.D : null; },
-    util: { esc: esc, safe: safe, enc: enc, plain: plain }
+    util: { esc: esc, safe: safe, enc: enc, plain: plain, underline: underline, blankify: blankify }
   };
 })();
 
