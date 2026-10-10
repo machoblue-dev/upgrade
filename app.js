@@ -675,7 +675,7 @@
   }
 
   /* ---------- 그리기 ---------- */
-  function reviewRoute(h) { return Review.ready() && (TABS[h] || h.indexOf('p-') === 0) ? Review.route(h) : null; }
+  function reviewRoute(h) { return Review.ready() && (TABS[h] || h.indexOf('p-') === 0 || h.indexOf('a-') === 0) ? Review.route(h) : null; }   // a- 지문 분석 보기(0.4.0)
 
   function render(fromHash) {
     A.dirty = false;
@@ -705,7 +705,7 @@
         if (!A.loading) history.replaceState(null, '', '#home');
         body = homeHTML(); h = 'home';
       } else {
-        body = r.view === 'p' ? Review.renderPassage(r.id) : Review.renderTab(r.tab);
+        body = r.view === 'p' ? Review.renderPassage(r.id) : r.view === 'a' ? Review.renderAnalysis(r.id) : Review.renderTab(r.tab);
         if (!A.preview) { A.ui.last[subjKey()] = h; saveUi(); }
       }
     }
@@ -798,7 +798,7 @@
         Sync.flush().catch(noop);
         choose(v, true).then(function () {
           var h = hash();
-          if (h.indexOf('p-') === 0) go('jimun'); else softRender(true);
+          if (h.indexOf('p-') === 0 || h.indexOf('a-') === 0) go('jimun'); else softRender(true);
           Sync.flush().catch(noop);
         }).catch(noop);
         return;

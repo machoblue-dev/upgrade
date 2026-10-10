@@ -13,7 +13,8 @@
    · 시험 이름(중간고사·기말고사)과 해(2026)를 회차·시험일에서 읽는다 — 틀.html 은 글자로 박혀 있었다
    · 단어 출처가 지문에 안 붙은 낱말은 코드나 출처 이름을 쓴다 — 틀.html 은 부교재를 「올림포스」로 박아 두었다
    · 묶음 차례에 없는 묶음이 있으면 뒤에 붙인다(빠진 지문이 목록에서 사라지지 않게)
-   · 0.3.0 발음 듣기 단추(data-act="say") — 단어 카드 · 핵심 문장(영어를 연 뒤) · 지문 문장(누른 뒤). 읽기는 app.js 가 한다 */
+   · 0.3.0 발음 듣기 단추(data-act="say") — 단어 카드 · 핵심 문장(영어를 연 뒤) · 지문 문장(누른 뒤). 읽기는 app.js 가 한다
+   · 0.4.0 지문 분석 보기 — 판 지문에 「분석」 칸이 있으면 지문 화면에 단추가 서고 #a-<지문 id> 한 화면에 네 탭이 선다(아래 절) */
 var Review = (function () {
   'use strict';
   var C = null;                                        // 지금 판 문맥 — setup() 이 만든다
@@ -105,6 +106,7 @@ var Review = (function () {
     if (!ui.f || typeof ui.f !== 'object') ui.f = {};
     if (ui.mode !== 'ko') ui.mode = 'en';
     if (ui.wm !== 'd2w') ui.wm = 'w2m';
+    if (!ATABS.some(function (t) { return t.id === ui.atab; })) ui.atab = ATABS[0].id;
     C = {
       D: D, P: P, W: W, G: G, V: V, byId: byId, wByP: wByP, vByP: vByP, KEYS: KEYS, UV: UV,
       ORDER: 차례(D['묶음차례'], P, '묶음'), GORDER: 차례(D['어법묶음'], G, '묶음'),
@@ -145,6 +147,7 @@ var Review = (function () {
   function route(h) {
     if (!C) return null;
     if (h.indexOf('p-') === 0) return C.byId[h.slice(2)] ? { view: 'p', id: h.slice(2) } : null;
+    if (h.indexOf('a-') === 0) return hasA(C.byId[h.slice(2)]) ? { view: 'a', id: h.slice(2) } : null;   // 지문 분석 보기(0.4.0)
     for (var i = 0; i < C.TABS.length; i++) if (C.TABS[i].id === h) return { view: 't', tab: h };
     return null;
   }
@@ -156,9 +159,9 @@ var Review = (function () {
     if (!r) return '';
     if (r.view === 't') return tabName(r.tab);
     var p = C.byId[r.id];
-    return pLabel(p) + ' — ' + p['제목'];
+    return pLabel(p) + ' — ' + p['제목'] + (r.view === 'a' ? ' · 지문 분석' : '');
   }
-  function href(h) { return h.indexOf('p-') === 0 ? 'p-' + enc(h.slice(2)) : h; }
+  function href(h) { return h.indexOf('p-') === 0 || h.indexOf('a-') === 0 ? h.slice(0, 2) + enc(h.slice(2)) : h; }
 
   function counts() {
     function n(list, keyOf, s) { var c = 0; each(list, function (x) { if (st(keyOf(x)) === s) c++; }); return c; }
@@ -467,6 +470,8 @@ var Review = (function () {
       (p['영제목'] ? '<p class="en-t">' + esc(p['영제목']) + '</p>' : '') + '</header>';
     h += '<div class="gist"><span class="lab">한 줄 요약</span><p>' + esc(p['한줄']) + '</p></div>';
     if ((p['흐름'] || []).length) h += '<ol class="flow" aria-label="글의 흐름">' + p['흐름'].map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ol>';
+    if (hasA(p)) h += '<a class="ago" href="#a-' + enc(p.id) + '"><span class="ago-t">지문 분석 보기</span><span class="ago-s">' +
+      aTabs(p).map(function (t) { return t.name; }).join(' · ') + '</span></a>';
     h += '<div class="modebar" role="group" aria-label="보는 방식"><button data-act="mode" data-v="en" aria-pressed="' + (mode === 'en') + '">영어로 읽기</button>' +
       '<button data-act="mode" data-v="ko" aria-pressed="' + (mode === 'ko') + '">한글 보고 떠올리기</button></div>';
     var leg = [];
@@ -503,6 +508,207 @@ var Review = (function () {
     return h;
   }
 
+  /* ---------- 지문 분석 보기(0.4.0 · 261010 강사 「네 학교 교과서에 지문 분석 보기 파트를 만들어 줘」) ----------
+     강사가 카톡으로 받은 견본 html 의 네 탭(구조·흐름 · 문장별 해설 · 문법 · 주제 문장) 모양에 분석 MD 글을 싣는다.
+     글은 판 지문의 「분석」 칸이다(_도구\폰복습\분석칸.py — 분석 MD 에 이미 있는 칸을 옮긴 것 · 새 글이 없다).
+     · 체크 칸이 없다 — 진도 번호(key)가 그대로이고 학생 진도가 안 비워진다
+     · 「분석」 칸이 없는 판(중간 판 · 종전 길로 만든 판)에서는 지문 화면에 들어가는 단추가 안 서고 #a- 주소도 안 열린다
+     · 고른 탭은 폰에 남는다(ui.atab) — 다른 지문 분석으로 넘어가도 같은 탭이 열린다
+     · 견본의 「핵심 대조」 · 「주제·요지 보기 분석」은 분석 MD 에 없는 칸이라 첫 판에서 뺐다(강사 「네 의견대로」) */
+  var ATABS = [{ id: 'gu', name: '구조·흐름' }, { id: 'mun', name: '문장별 해설' }, { id: 'beop', name: '문법' }, { id: 'ju', name: '주제 문장' }];
+  function aOf(p) { return p && p['분석'] && typeof p['분석'] === 'object' ? p['분석'] : null; }
+  /* 칸 이름(분석칸.py) — 얘기 · 구조[칸 · 범위 · 말] · 이야기 · 줄(문장마다)[n · 기능 · 핵심 · 표시 · 끊어 · 외울말 · 고르기 · 문법점 · 주석 · 조각] ·
+     심화 · 구문[틀 · 풀이 · 예] · 더쉬운 · 요약[en · ko] · 속풀이[n · 말] · 막힘[물음 · 풀이] */
+  function aSents(a) { return (a['줄'] || []).filter(function (s) { return s && typeof s.n === 'number'; }); }
+  function beopOn(s) { return !!((s['조각'] || []).length || s['고르기'] || (s['주석'] || []).length || (s['문법점'] || []).length); }
+  function aHas(a, id) {
+    function L(k) { return (a[k] || []).length > 0; }
+    if (id === 'gu') return L('얘기') || L('구조') || !!a['이야기'];
+    if (id === 'mun') return aSents(a).length > 0;
+    if (id === 'beop') return L('심화') || L('구문') || aSents(a).some(beopOn);
+    return L('더쉬운') || L('요약') || L('속풀이') || L('막힘') || aSents(a).some(function (s) { return !!s['표시']; });
+  }
+  function aTabs(p) { var a = aOf(p); return a ? ATABS.filter(function (t) { return aHas(a, t.id); }) : []; }
+  function hasA(p) { return aTabs(p).length > 0; }
+  function aCur(p) {
+    var ts = aTabs(p);
+    for (var i = 0; i < ts.length; i++) if (ts[i].id === U().atab) return ts[i].id;
+    return ts.length ? ts[0].id : '';
+  }
+  function aName(id) { for (var i = 0; i < ATABS.length; i++) if (ATABS[i].id === id) return ATABS[i].name; return ''; }
+  function aRepLabel(p, tab) { return '지문 분석 · ' + pLabel(p) + ' — ' + (p['제목'] || '') + ' · ' + aName(tab); }
+  function aSec(title, body, cls) { return '<section class="acard' + (cls ? ' ' + cls : '') + '"><h3 class="ah">' + title + '</h3>' + body + '</section>'; }
+  function aLines(list, cls) { return (list || []).map(function (x) { return '<p' + (cls ? ' class="' + cls + '"' : '') + '>' + esc(x) + '</p>'; }).join(''); }
+  /* 구조도 칸 이름으로 딱지 색을 고른다 — 도입 파랑 · 전개(본론 · 근거 · 사례) 주황 · 전환(반론 · 대조) 빨강 · 결론(주제 · 마무리) 보라 */
+  function 칸색(name) {
+    var s = String(name || '');
+    if (/도입|배경|소개|상황|문제 제기/.test(s)) return 'k1';
+    if (/전환|반론|대조|반전|반박|한계|문제/.test(s)) return 'k3';
+    if (/결론|주제|마무리|요지|정리|중심|주장|교훈/.test(s)) return 'k4';
+    return 'k2';
+  }
+  function starBadge(v) {
+    if (v === '주제문') return '<span class="astar ju">주제문 ★★★</span>';
+    if (v === '원픽문장') return '<span class="astar one">원픽문장 ★★★</span>';
+    return '';
+  }
+  /* 풀이 한 줄 — [낱말, 풀이] 를 「낱말 = 풀이」로(종이 지문 노트 1면 어휘·어법 상자와 같은 꼴) */
+  function noteHTML(x) { return '<li>' + (x[0] ? '<b class="en">' + esc(x[0]) + '</b> = ' : '') + esc(x[1]) + '</li>'; }
+  /* 문법 문장 조각 — [글, 표] · 표 g 짚을 문법 · s 주어 쪽 · v 동사 쪽(겹치면 gs · gv) · '@' 는 그 자리에서 시작하는 골격 라벨(S · V · S' · V') */
+  function segHTML(list) {
+    return (list || []).map(function (x) {
+      var t = String(x[0] == null ? '' : x[0]), k = String(x[1] || '');
+      if (k === '@') return '<sup class="svl ' + (t.charAt(0) === 'V' ? 'v' : 's') + '">' + esc(t.replace(/'/g, '′')) + '</sup>';
+      var cls = [];
+      if (k.indexOf('g') >= 0) cls.push('u-g');
+      if (k.indexOf('s') >= 0) cls.push('u-s');
+      if (k.indexOf('v') >= 0) cls.push('u-v');
+      return cls.length ? '<span class="' + cls.join(' ') + '">' + esc(t) + '</span>' : esc(t);
+    }).join('');
+  }
+  /* 짚을 문법 낱말 — 붙어 있는 g 조각을 하나로(라벨 조각은 건너뛴다) */
+  function gWords(list) {
+    var out = [], cur = '';
+    (list || []).forEach(function (x) {
+      if (x[1] === '@') return;
+      if (String(x[1] || '').indexOf('g') >= 0) cur += x[0];
+      else if (cur) { if (out.indexOf(cur.trim()) < 0) out.push(cur.trim()); cur = ''; }
+    });
+    if (cur && out.indexOf(cur.trim()) < 0) out.push(cur.trim());
+    return out.filter(Boolean);
+  }
+  function aEn(p, x) {
+    var s = sentence(p, x.n);
+    return s.html ? s : { html: esc((x['끊어'] || []).map(function (c) { return c[0]; }).join(' ')), ko: s.ko || '' };
+  }
+
+  function aGu(p, a) {
+    var h = '';
+    if ((a['얘기'] || []).length) h += aSec('이 글, 무슨 얘기냐', '<p class="atext">' + esc(a['얘기'].join(' ')) + '</p>');
+    if ((a['구조'] || []).length) h += aSec('글의 구조도', '<ol class="astruct">' + a['구조'].map(function (x) {
+      return '<li class="' + 칸색(x['칸']) + '"><span class="as-top"><span class="akb">' + esc(x['칸']) + '</span>' +
+        (x['범위'] ? '<span class="arange">문장 ' + esc(x['범위']) + '</span>' : '') + '</span><p>' + esc(x['말']) + '</p></li>';
+    }).join('') + '</ol>');
+    if (a['이야기']) h += aSec('지문 이해를 돕는 이야기', '<p class="atext">' + esc(a['이야기']) + '</p>');
+    return h;
+  }
+  function aMun(p, a) {
+    var h = '<p class="intro">문장마다 하는 일과 풀이예요. 「끊어 읽기 보기」를 누르면 덩어리마다 뜻이 나와요.</p>';
+    aSents(a).forEach(function (x) {
+      var s = aEn(p, x);
+      h += '<article class="acard asent' + (x['표시'] ? ' star' : '') + '"><div class="as-h"><span class="anum">' + esc(x.n) + '</span>' +
+        (x['기능'] ? '<b class="as-f">' + esc(x['기능']) + '</b>' : '') + starBadge(x['표시']) + '</div>' +
+        '<p class="en as-en">' + safe(s.html) + '</p>' + sayBtn(s.html) +
+        (s.ko ? '<p class="as-ko">' + esc(s.ko) + '</p>' : '') +
+        (x['핵심'] ? '<p class="as-core">' + esc(x['핵심']) + '</p>' : '') +
+        ((x['외울말'] || []).length ? '<ul class="awords" aria-label="이 문장 단어">' + x['외울말'].map(function (w) {
+          return '<li><b class="en">' + esc(w[0]) + '</b>' + esc(w[1]) + '</li>';
+        }).join('') + '</ul>' : '') +
+        ((x['끊어'] || []).length ? '<button class="link-btn achunk-b" data-act="achunk" aria-expanded="false">끊어 읽기 보기</button><ol class="achunks" hidden>' +
+          x['끊어'].map(function (c) {
+            return '<li><span class="en">' + esc(c[0]) + '</span><span class="ck">' + esc(c[1]) + '</span>' +
+              ((c[2] || []).length ? '<ul class="anotes">' + c[2].map(noteHTML).join('') + '</ul>' : '') + '</li>';
+          }).join('') + '</ol>' : '') +
+        '</article>';
+    });
+    return h;
+  }
+  function aBeop(p, a) {
+    var h = '';
+    (a['심화'] || []).forEach(function (x) {
+      h += '<section class="acard agram"><p class="ag-k">자주 나오는 문법</p><h3 class="ah">' + esc(x['이름']) + '</h3><dl class="agf">' +
+        [['틀', x['틀'], ''], ['규칙', x['규칙'], ''], ['예', x['예'], 'en'], ['함정', x['함정'], '']].filter(function (r) { return r[1]; }).map(function (r) {
+          return '<div><dt>' + r[0] + '</dt><dd' + (r[2] ? ' class="' + r[2] + '"' : '') + '>' + esc(r[1]) + '</dd></div>';
+        }).join('') + '</dl></section>';
+    });
+    var ss = aSents(a).filter(beopOn);
+    if (ss.length) {
+      var sv = ss.some(function (x) { return (x['조각'] || []).some(function (g) { return g[1] === '@'; }); });
+      h += '<p class="intro">색칠한 말이 짚을 문법이에요.' + (sv ? ' 작은 S는 주어, V는 동사 자리예요.' : '') + '</p>';
+      ss.forEach(function (x) {
+        var notes = (x['문법점'] || []).concat(x['주석'] || []);
+        h += '<article class="acard abeop"><div class="as-h"><span class="anum">' + esc(x.n) + '</span>' +
+          gWords(x['조각']).map(function (t) { return '<span class="tag">' + esc(t) + '</span>'; }).join('') + '</div>' +
+          '<p class="en ag-en">' + ((x['조각'] || []).length ? segHTML(x['조각']) : safe(aEn(p, x).html)) + '</p>' +
+          (notes.length ? '<ul class="anotes">' + notes.map(noteHTML).join('') + '</ul>' : '') +
+          (x['고르기'] ? '<div class="ag-box"><span class="lab">어법 고르기 자리</span><p>' + esc(x['고르기']) + '</p></div>' : '') +
+          '</article>';
+      });
+    }
+    if ((a['구문'] || []).length) h += aSec('구문 정리', '<ol class="agu">' + a['구문'].map(function (x) {
+      return '<li><b>' + esc(x['틀']) + '</b>' + (x['풀이'] ? '<span class="ag-m">' + esc(x['풀이']) + '</span>' : '') +
+        (x['예'] ? '<span class="en">' + esc(x['예']) + '</span>' : '') + '</li>';
+    }).join('') + '</ol>');
+    return h;
+  }
+  function aJu(p, a) {
+    var h = '', 주 = a['더쉬운'] || [], 요 = a['요약'] || [], star = {};
+    if (주.length || 요.length) h += aSec('주제·요약',
+      (주.length ? '<div class="aj-sub"><span class="lab">더 쉬운 주제</span>' + aLines(주) + '</div>' : '') +
+      (요.length ? '<div class="aj-sub"><span class="lab">주제(Main Idea) · 요약문(Summary)</span>' + 요.map(function (x) {
+        return '<div class="aj-pair"><p class="en">' + esc(x.en) + '</p>' + sayBtn(x.en) + (x.ko ? '<p class="aj-ko">' + esc(x.ko) + '</p>' : '') + '</div>';
+      }).join('') + '</div>' : ''));
+    aSents(a).forEach(function (x) {
+      if (!x['표시']) return;
+      star[x.n] = 1;
+      var s = aEn(p, x);
+      h += '<section class="acard astarbox ' + (x['표시'] === '주제문' ? 'ju' : 'one') + '"><div class="as-h"><span class="anum">' + esc(x.n) + '</span>' +
+        starBadge(x['표시']) + (x['기능'] ? '<b class="as-f">' + esc(x['기능']) + '</b>' : '') + '</div>' +
+        '<p class="en aj-en">' + safe(s.html) + '</p>' + sayBtn(s.html) + (s.ko ? '<p class="as-ko">' + esc(s.ko) + '</p>' : '') +
+        (x['핵심'] ? '<p class="as-core">' + esc(x['핵심']) + '</p>' : '') + '</section>';
+    });
+    if ((a['속풀이'] || []).length) h += aSec('문장마다 속뜻', '<p class="ahint">번호는 지문의 문장 번호와 같아요.</p><ol class="asd">' + a['속풀이'].map(function (x) {
+      return '<li' + (star[x.n] ? ' class="key"' : '') + '><span class="anum">' + esc(x.n) + '</span><div>' + aLines(x['말']) + '</div></li>';
+    }).join('') + '</ol>');
+    if ((a['막힘'] || []).length) h += aSec('여기서 막힌다', a['막힘'].map(function (x) {
+      return '<div class="amk"><p class="amk-q">' + esc(x['물음']) + '</p>' + aLines(x['풀이']) + '</div>';
+    }).join(''));
+    return h;
+  }
+  function aBody(p, tab) {
+    var a = aOf(p), ts = aTabs(p), k = -1;
+    for (var i = 0; i < ts.length; i++) if (ts[i].id === tab) k = i;
+    var h = tab === 'gu' ? aGu(p, a) : tab === 'mun' ? aMun(p, a) : tab === 'beop' ? aBeop(p, a) : aJu(p, a);
+    var nx = ts[k + 1];
+    return h + (nx ? '<button class="anext" data-act="atab" data-v="' + nx.id + '">다음 · ' + nx.name + ' ›</button>'
+      : '<a class="anext" href="#p-' + enc(p.id) + '">‹ 지문으로 돌아가기</a>');
+  }
+  function aTabsHTML(ts, cur) {
+    return '<div class="atabs" role="tablist" aria-label="분석 보기" style="grid-template-columns:repeat(' + Math.max(ts.length, 1) + ',minmax(0,1fr))">' +
+      ts.map(function (t) { return '<button role="tab" data-act="atab" data-v="' + t.id + '" aria-selected="' + (t.id === cur) + '">' + t.name + '</button>'; }).join('') + '</div>';
+  }
+  function analysisHTML(id) {
+    var p = C.byId[id], ts = aTabs(p), cur = aCur(p);
+    var list = C.P.filter(hasA), i = list.indexOf(p), prev = list[i - 1], next = list[i + 1];
+    var h = '<div class="pbar"><a class="back" href="#p-' + enc(p.id) + '">‹ 지문</a><span class="t">' + esc(pLabel(p)) + ' · 분석</span><span class="nv">' +
+      (prev ? '<a href="#a-' + enc(prev.id) + '" aria-label="이전 지문 분석">‹</a>' : '<span aria-hidden="true">‹</span>') +
+      (next ? '<a href="#a-' + enc(next.id) + '" aria-label="다음 지문 분석">›</a>' : '<span aria-hidden="true">›</span>') + '</span></div>';
+    h += '<header class="phead"><p class="eyebrow">지문 분석 · ' + esc(pLabel(p)) + '</p><h2>' + esc(p['제목']) + '</h2>' +
+      (p['영제목'] ? '<p class="en-t">' + esc(p['영제목']) + '</p>' : '') + '</header>';
+    h += aTabsHTML(ts, cur) + '<div id="abody" data-p="' + esc(p.id) + '" data-tab="' + cur + '">' + aBody(p, cur) + '</div>';
+    h += repBtn(p.key, aRepLabel(p, cur));
+    h += '<nav class="pn">' + (prev ? '<a href="#a-' + enc(prev.id) + '"><span class="k">‹ 이전 지문 분석</span><span class="t">' + esc(prev['제목']) + '</span></a>' : '<span></span>') +
+      (next ? '<a class="nx" href="#a-' + enc(next.id) + '"><span class="k">다음 지문 분석 ›</span><span class="t">' + esc(next['제목']) + '</span></a>' : '<span></span>') + '</nav>';
+    return h;
+  }
+  /* 탭을 바꾸면 그 자리에서 몸만 갈아 끼운다 — 내려가 있었으면 새 탭 첫머리(탭 줄 바로 아래)로 올린다 */
+  function aSwitch(v) {
+    var body = document.getElementById('abody');
+    var p = body && C.byId[body.getAttribute('data-p')];
+    if (!p || !aHas(aOf(p), v)) return;
+    U().atab = v; saveUi();
+    body.innerHTML = aBody(p, v);
+    body.setAttribute('data-tab', v);
+    each(document.querySelectorAll('.atabs [data-act="atab"]'), function (x) { x.setAttribute('aria-selected', x.getAttribute('data-v') === v); });
+    var rb = document.querySelector('.rep[data-act="rep"]');
+    if (rb) rb.setAttribute('data-label', aRepLabel(p, v));
+    var bar = document.querySelector('.atabs');
+    if (bar) {   // 탭 줄은 위쪽 막대 아래에 붙어 있다(style.css .atabs top) — 몸 첫머리가 그 아래에 오게
+      var top = body.getBoundingClientRect().top + window.scrollY - (parseFloat(getComputedStyle(bar).top) || 0) - bar.getBoundingClientRect().height;
+      if (window.scrollY > top) window.scrollTo(0, Math.max(0, top));
+    }
+  }
+
   /* ---------- 그리기 ---------- */
   function renderTab(tab) {
     U().tab = tab;
@@ -510,6 +716,7 @@ var Review = (function () {
     return tabsHTML(tab) + '<main id="view">' + body + '</main>' + tailHTML();
   }
   function renderPassage(id) { return passageHTML(id) + tailHTML(); }
+  function renderAnalysis(id) { return analysisHTML(id) + tailHTML(); }
   function refreshTabs() {
     var t = document.querySelector('.tabs');
     if (!t) return;
@@ -610,6 +817,12 @@ var Review = (function () {
         return 'render';
       case 'resetno':
         document.getElementById('resetbox').innerHTML = '<button class="reset" data-act="reset">체크한 진도 지우기</button>'; return true;
+      case 'atab':
+        aSwitch(b.getAttribute('data-v')); return true;
+      case 'achunk':
+        var ol = b.nextElementSibling, show = !!(ol && ol.hidden);
+        if (ol) ol.hidden = !show;
+        b.setAttribute('aria-expanded', show); b.textContent = show ? '끊어 읽기 접기' : '끊어 읽기 보기'; return true;
     }
     return false;
   }
@@ -617,9 +830,10 @@ var Review = (function () {
   return {
     setup: setup, ready: function () { return !!C; }, route: route, label: label, href: href,
     tabName: tabName, firstTab: firstTab, heroHTML: heroHTML, progress: progress,
-    renderTab: renderTab, renderPassage: renderPassage, refreshTabs: refreshTabs, click: click,
+    renderTab: renderTab, renderPassage: renderPassage, renderAnalysis: renderAnalysis, refreshTabs: refreshTabs, click: click,
     data: function () { return C ? C.D : null; },
-    util: { esc: esc, safe: safe, enc: enc, plain: plain, underline: underline, blankify: blankify }
+    util: { esc: esc, safe: safe, enc: enc, plain: plain, underline: underline, blankify: blankify, segHTML: segHTML, gWords: gWords },
+    analysis: { tabs: function (id) { return C && C.byId[id] ? aTabs(C.byId[id]).map(function (t) { return t.id; }) : []; }, body: function (id, tab) { return aBody(C.byId[id], tab); } }
   };
 })();
 
