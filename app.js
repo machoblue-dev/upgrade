@@ -200,7 +200,7 @@
 
   /* ---------- 머리(로그인 뒤) ---------- */
   function topHTML() {
-    return '<header class="topbar"><a class="brand" href="#home" aria-label="처음 화면">UP<span class="c">:</span>GRADE</a><span class="sp"></span>' +
+    return '<header class="topbar"><a class="brand" href="#home" aria-label="처음 화면"><span class="bt">UP<span class="c">:</span></span><span class="bg">GRADE</span></a><span class="sp"></span>' +
       (isAdmin() ? '<a class="tb" href="#admin">관리</a>' : '') +
       '<a class="tb" href="#me">내 정보</a></header>' + subjHTML();
   }
