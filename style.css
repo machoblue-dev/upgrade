@@ -580,14 +580,17 @@ a.sname{text-decoration:underline;text-underline-offset:4px;text-decoration-colo
 .flash-wrap.has-say .flash{padding-right:76px}
 
 /* ════════ 0.4.0 — 지문 분석 보기(261010) ════════
-   지문 화면의 「지문 분석 보기」 단추 → #a-<지문 id> 한 화면에 네 탭(구조·흐름 · 문장별 해설 · 문법 · 주제 문장 · review.js).
+   지문 화면 제목 아래 「지문 읽기 | 지문 분석」 전환(0.4.1 — 0.4.0 은 흐름 아래 단추) → #a-<지문 id> 한 화면에 네 탭(구조·흐름 · 문장별 해설 · 문법 · 주제 문장 · review.js).
    견본(카톡 html)은 모양만 따랐다 — 색은 위의 색 칸만 쓴다(어두운 · 밝은 화면 둘 다). 탭 줄은 위쪽 막대(.pbar · 높이 57px) 아래에 붙어 따라온다 */
-.ago{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:10px;row-gap:1px;margin-top:18px;padding:13px 16px 13px 18px;border-radius:17px;
-  background:var(--coral);color:#fff;box-shadow:0 5px 0 var(--coral-edge)}
-.ago::after{content:"›";grid-column:2;grid-row:1 / span 2;font-size:26px;font-weight:900;line-height:1}
-.ago-t{font-size:16.5px;font-weight:900;letter-spacing:-.01em;line-height:1.35}
-.ago-s{font-size:12.5px;font-weight:700;line-height:1.4;color:rgba(255,255,255,.9)}
-.ago:active{transform:translateY(3px);box-shadow:0 2px 0 var(--coral-edge)}
+/* 지문 읽기 | 지문 분석 전환(0.4.1) — 제목 바로 아래. 지금 보는 쪽은 채운 파랑, 갈 쪽은 눌러지는 단추 */
+.pswitch{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}
+.pswitch a,.pswitch .ps-on{display:grid;place-items:center;min-width:0;min-height:50px;padding:4px 6px;border-radius:14px;font-size:16px;font-weight:900;letter-spacing:-.01em;text-align:center}
+.pswitch a{background:var(--surface);border:1.5px solid var(--coral-line);color:var(--coral-ink);box-shadow:0 4px 0 var(--coral-line)}
+.pswitch a:active{transform:translateY(3px);box-shadow:0 1px 0 var(--coral-line)}
+.pswitch .ps-on{background:var(--coral);color:#fff;box-shadow:0 4px 0 var(--coral-edge)}
+/* 지문 목록 머리 안내 — 분석 칸이 있는 판에만 */
+.ahint-card{margin:8px 0 2px;padding:10px 13px;border-radius:13px;background:var(--coral-wash);border:1px solid var(--coral-line);font-size:13.5px;line-height:1.55;color:var(--ink2)}
+.ahint-card b{display:block;font-size:14.5px;font-weight:900;color:var(--coral-ink)}
 .atabs{position:sticky;top:calc(env(safe-area-inset-top,0px) + 57px);z-index:9;background:var(--bg);display:grid;gap:5px;
   margin:16px -16px 0;padding:8px 12px 10px;border-bottom:1px solid var(--line)}
 .atabs button{min-width:0;min-height:44px;border-radius:12px;font-size:13.5px;font-weight:800;line-height:1.25;color:var(--ink2);text-align:center;padding:4px 3px;

@@ -14,7 +14,8 @@
    · 단어 출처가 지문에 안 붙은 낱말은 코드나 출처 이름을 쓴다 — 틀.html 은 부교재를 「올림포스」로 박아 두었다
    · 묶음 차례에 없는 묶음이 있으면 뒤에 붙인다(빠진 지문이 목록에서 사라지지 않게)
    · 0.3.0 발음 듣기 단추(data-act="say") — 단어 카드 · 핵심 문장(영어를 연 뒤) · 지문 문장(누른 뒤). 읽기는 app.js 가 한다
-   · 0.4.0 지문 분석 보기 — 판 지문에 「분석」 칸이 있으면 지문 화면에 단추가 서고 #a-<지문 id> 한 화면에 네 탭이 선다(아래 절) */
+   · 0.4.0 지문 분석 보기 — 판 지문에 「분석」 칸이 있으면 지문 화면에 단추가 서고 #a-<지문 id> 한 화면에 네 탭이 선다(아래 절)
+     0.4.1 단추를 제목 바로 아래 「지문 읽기 | 지문 분석」 전환으로 올렸다 · 지문 목록 머리에 안내 한 줄(강사 「찾아 들어가기가 다소 어렵다」) */
 var Review = (function () {
   'use strict';
   var C = null;                                        // 지금 판 문맥 — setup() 이 만든다
@@ -248,7 +249,9 @@ var Review = (function () {
   /* ---------- 탭: 지문 ---------- */
   function jimunHTML() {
     var items = grpItems(), f = chipVal('jimun', items);
-    var out = '<p class="intro">지문을 누르면 문장마다 해석이 나와요. 한글을 보고 영어를 떠올리는 방식으로도 볼 수 있어요.</p>' + chipsHTML('jimun', items);
+    var out = '<p class="intro">지문을 누르면 문장마다 해석이 나와요. 한글을 보고 영어를 떠올리는 방식으로도 볼 수 있어요.</p>' +
+      (C.P.some(hasA) ? '<p class="ahint-card"><b>지문을 열면 맨 위에 「지문 분석」이 있어요.</b>구조·흐름 · 문장별 해설 · 문법 · 주제 문장을 볼 수 있어요.</p>' : '') +
+      chipsHTML('jimun', items);
     C.ORDER.forEach(function (g) {
       if (f !== 'all' && f !== g) return;
       var ps = C.P.filter(function (p) { return p['묶음'] === g; });
@@ -468,10 +471,9 @@ var Review = (function () {
       (next ? '<a href="#p-' + enc(next.id) + '" aria-label="다음 지문">›</a>' : '<span aria-hidden="true">›</span>') + '</span></div>';
     h += '<header class="phead"><p class="eyebrow">' + esc(pLabel(p)) + '</p><h2>' + esc(p['제목']) + '</h2>' +
       (p['영제목'] ? '<p class="en-t">' + esc(p['영제목']) + '</p>' : '') + '</header>';
+    h += pSwitch(p, 'p');
     h += '<div class="gist"><span class="lab">한 줄 요약</span><p>' + esc(p['한줄']) + '</p></div>';
     if ((p['흐름'] || []).length) h += '<ol class="flow" aria-label="글의 흐름">' + p['흐름'].map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ol>';
-    if (hasA(p)) h += '<a class="ago" href="#a-' + enc(p.id) + '"><span class="ago-t">지문 분석 보기</span><span class="ago-s">' +
-      aTabs(p).map(function (t) { return t.name; }).join(' · ') + '</span></a>';
     h += '<div class="modebar" role="group" aria-label="보는 방식"><button data-act="mode" data-v="en" aria-pressed="' + (mode === 'en') + '">영어로 읽기</button>' +
       '<button data-act="mode" data-v="ko" aria-pressed="' + (mode === 'ko') + '">한글 보고 떠올리기</button></div>';
     var leg = [];
@@ -673,6 +675,16 @@ var Review = (function () {
     return h + (nx ? '<button class="anext" data-act="atab" data-v="' + nx.id + '">다음 · ' + nx.name + ' ›</button>'
       : '<a class="anext" href="#p-' + enc(p.id) + '">‹ 지문으로 돌아가기</a>');
   }
+  /* 지문 읽기 | 지문 분석 전환(0.4.1 · 261010 강사 「더 보기 쉬운 곳에 · 학생들이 찾아 들어가기가 다소 어렵다」) —
+     지문 화면과 분석 화면의 제목 바로 아래 같은 자리에 선다. 첫 화면에서 바로 보이게 흐름 아래 단추(0.4.0)를 여기로 올렸다.
+     지금 보는 쪽은 채운 칸, 갈 쪽은 누르는 단추 모양이다. 분석 칸이 없는 지문에는 안 선다 */
+  function pSwitch(p, cur) {
+    if (!hasA(p)) return '';
+    var 읽기 = '지문 읽기', 분석 = '지문 분석';
+    return '<nav class="pswitch" aria-label="지문 보는 방식">' +
+      (cur === 'p' ? '<span class="ps-on" aria-current="page">' + 읽기 + '</span><a class="ago" href="#a-' + enc(p.id) + '">' + 분석 + '</a>'
+        : '<a href="#p-' + enc(p.id) + '">' + 읽기 + '</a><span class="ps-on" aria-current="page">' + 분석 + '</span>') + '</nav>';
+  }
   function aTabsHTML(ts, cur) {
     return '<div class="atabs" role="tablist" aria-label="분석 보기" style="grid-template-columns:repeat(' + Math.max(ts.length, 1) + ',minmax(0,1fr))">' +
       ts.map(function (t) { return '<button role="tab" data-act="atab" data-v="' + t.id + '" aria-selected="' + (t.id === cur) + '">' + t.name + '</button>'; }).join('') + '</div>';
@@ -680,11 +692,12 @@ var Review = (function () {
   function analysisHTML(id) {
     var p = C.byId[id], ts = aTabs(p), cur = aCur(p);
     var list = C.P.filter(hasA), i = list.indexOf(p), prev = list[i - 1], next = list[i + 1];
-    var h = '<div class="pbar"><a class="back" href="#p-' + enc(p.id) + '">‹ 지문</a><span class="t">' + esc(pLabel(p)) + ' · 분석</span><span class="nv">' +
+    var h = '<div class="pbar"><a class="back" href="#jimun">‹ 목록</a><span class="t">' + esc(pLabel(p)) + ' · 분석</span><span class="nv">' +
       (prev ? '<a href="#a-' + enc(prev.id) + '" aria-label="이전 지문 분석">‹</a>' : '<span aria-hidden="true">‹</span>') +
       (next ? '<a href="#a-' + enc(next.id) + '" aria-label="다음 지문 분석">›</a>' : '<span aria-hidden="true">›</span>') + '</span></div>';
     h += '<header class="phead"><p class="eyebrow">지문 분석 · ' + esc(pLabel(p)) + '</p><h2>' + esc(p['제목']) + '</h2>' +
       (p['영제목'] ? '<p class="en-t">' + esc(p['영제목']) + '</p>' : '') + '</header>';
+    h += pSwitch(p, 'a');
     h += aTabsHTML(ts, cur) + '<div id="abody" data-p="' + esc(p.id) + '" data-tab="' + cur + '">' + aBody(p, cur) + '</div>';
     h += repBtn(p.key, aRepLabel(p, cur));
     h += '<nav class="pn">' + (prev ? '<a href="#a-' + enc(prev.id) + '"><span class="k">‹ 이전 지문 분석</span><span class="t">' + esc(prev['제목']) + '</span></a>' : '<span></span>') +
