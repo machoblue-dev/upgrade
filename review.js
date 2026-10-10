@@ -197,9 +197,6 @@ var Review = (function () {
     var 진도 = 전체 ? '<div class="hero-prog"><div class="hp-row"><span>전체 진도</span><span>' + 합 + ' / ' + 전체 + '</span></div>' +
       '<span class="hp-bar" aria-hidden="true"><i style="width:' + Math.round(합 * 100 / 전체) + '%"></i></span></div>' : '';
     return '<header class="hero">' +
-      '<div class="hero-top"><span class="logo"><img class="logo-l" src="img/logo.png" alt="학문당시스템학원 조은희시스템영어" width="184" height="24">' +
-      '<img class="logo-d" src="img/logo-dark.png" alt="학문당시스템학원 조은희시스템영어" width="184" height="24"></span>' +
-      '<span class="kicker"><span class="lat">Review</span> · 시험 복습</span></div>' +
       '<div class="hero-card"><div class="hero-main"><h1><small>' + (y ? y + ' · ' : '') + esc(D['학교표시']) + '</small>' + safe(제목) + '</h1>' + dbox + '</div>' +
       진도 + '</div>' +
       '</header>' +

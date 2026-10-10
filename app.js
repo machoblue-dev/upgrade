@@ -200,7 +200,7 @@
 
   /* ---------- 머리(로그인 뒤) ---------- */
   function topHTML() {
-    return '<header class="topbar"><a class="brand" href="#home" aria-label="처음 화면"><span class="bt">UP<span class="c">:</span></span><span class="bg">GRADE</span></a><span class="sp"></span>' +
+    return '<header class="topbar"><a class="brand" href="#home" aria-label="처음 화면"><span class="bt">UP</span><span class="c">:</span><span class="bg">GRADE</span></a><span class="sp"></span>' +
       (isAdmin() ? '<a class="tb" href="#admin">관리</a>' : '') +
       '<a class="tb" href="#me">내 정보</a></header>' + subjHTML();
   }
@@ -509,7 +509,12 @@
     if (A.banner && !A.preview) {
       out += '<div class="newbar" role="status"><p><b>새 내용이 있어요</b>선생님이 자료를 새로 올렸어요.</p><button data-act="banner-ok">확인</button></div>';
     }
-    return out + instCardHTML() + Review.heroHTML() + progressHTML() + continueHTML();
+    return out + instCardHTML() + Review.heroHTML() + progressHTML() + continueHTML() + sigHTML();
+  }
+  /* 첫 화면 맨 아래 학원 로고 — 0.3.3 에 머리 카드 위에서 옮겼다 */
+  function sigHTML() {
+    return '<footer class="sig"><span class="logo"><img class="logo-l" src="img/logo.png" alt="학문당시스템학원 조은희시스템영어" width="153" height="20">' +
+      '<img class="logo-d" src="img/logo-dark.png" alt="학문당시스템학원 조은희시스템영어" width="153" height="20"></span></footer>';
   }
 
   /* ---------- 내 정보 ---------- */

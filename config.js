@@ -6,4 +6,4 @@ var CONFIG = {
   url: 'https://lrurwcgkmbinmshicywd.supabase.co',
   key: 'sb_publishable_FyapkcWxN9T6AjpQjPbgpw_1xd7CrO1'
 };
-var APP_VERSION = '0.3.2';
+var APP_VERSION = '0.3.3';

@@ -17,7 +17,7 @@
   --plum:#6E6BF0; --plum-edge:#4F4CC9; --plum-wash:#F0EFFE; --plum-ink:#4F4CC9;
   --amber:#F07B1D; --amber-edge:#C85F0E; --amber-wash:#FFF1E4;
   --yellow:#FFC839; --yellow-edge:#E8A200; --yellow-wash:#FFF7E2; --yellow-ink:#8A6400; --yellow-line:#FFE9AE; --on-yellow:#1F2033;
-  --hl:#FFE39A;
+  --hl:#FFE39A; --brand-dot:#F5AE00;
   --ok:#00A37E; --ok-wash:#EDF9F4; --re:#E03A2E; --re-wash:#FFF0EE; --re-edge:#C22F24; --re-line:#FFDBD7;
   --inv:#1F2033; --on-inv:#FFFFFF; --btn2:#1F2033; --on-btn2:#FFFFFF; --btn2-edge:#0E0F1C;
   --scrim:rgba(31,32,51,.45); --wm:rgba(31,32,51,.18);
@@ -37,7 +37,7 @@ html[data-theme="dark"]{
   --plum:#6E6BF0; --plum-edge:#38359E; --plum-wash:rgba(120,116,245,.16); --plum-ink:#AEACFF;
   --amber:#DC6C12; --amber-edge:#7E3C06; --amber-wash:rgba(240,123,29,.15);
   --yellow:#FFC839; --yellow-edge:#A87500; --yellow-wash:rgba(255,200,57,.11); --yellow-ink:#FFD56E; --yellow-line:rgba(255,200,57,.30);
-  --hl:rgba(255,200,57,.36);
+  --hl:rgba(255,200,57,.36); --brand-dot:#FFC839;
   --ok:#3DD0A0; --ok-wash:rgba(32,190,140,.14); --re:#E5483D; --re-wash:rgba(229,72,61,.16); --re-edge:#7A1F18; --re-line:rgba(229,72,61,.45);
   --inv:#E6EAF2; --on-inv:#10131A; --btn2:#2D3443; --on-btn2:#EDF0F6; --btn2-edge:#090B10;
   --scrim:rgba(0,0,0,.62); --wm:rgba(237,240,246,.13);
@@ -60,11 +60,12 @@ a{color:inherit;text-decoration:none}
 
 /* ---- 머리 ---- */
 .hero{padding-block:4px 16px;display:grid;gap:12px}
-.hero-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .logo{display:inline-flex;border-radius:8px}
 .logo img{height:22px;width:auto;display:block}
+/* 학원 로고 — 0.3.3 부터 첫 화면 맨 아래 가운데(app.js sigHTML) */
+.sig{display:grid;justify-items:center;margin:28px 0 4px}
+.sig .logo img{height:20px}
 .kicker{font-size:12.5px;font-weight:700;color:var(--muted);white-space:nowrap}
-.kicker .lat{font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--coral)}
 .hero-card{position:relative;overflow:hidden;border-radius:24px;padding:18px 18px 16px;color:#fff;
   background:linear-gradient(135deg,var(--hero-a),var(--hero-b));box-shadow:var(--hero-shadow);display:grid;gap:14px}
 .hero-card::after{content:"";position:absolute;right:-56px;top:-56px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.12);pointer-events:none}
@@ -352,13 +353,16 @@ mark{background:linear-gradient(transparent 56%,var(--hl) 56%);color:inherit;pad
 
 /* ---- 머리(로그인 뒤) ---- */
 .topbar{display:flex;align-items:center;flex-wrap:wrap;gap:6px;min-height:50px}
-/* 머리 이름 — 앱 아이콘 윗줄(파란 타일 · 흰 UP · 노란 쌍점)을 옮기고 GRADE 는 아이콘처럼 자간을 띄운다(0.3.2) */
-.brand{display:inline-flex;align-items:center;gap:8px;padding:4px 0;font-family:var(--sans);color:var(--ink);-webkit-tap-highlight-color:transparent}
-.brand .bt{display:inline-flex;align-items:center;height:31px;padding:0 8px 0 9px;border-radius:9px;
-  background:linear-gradient(135deg,var(--hero-a),var(--hero-b));color:#fff;font-weight:900;font-size:18.5px;letter-spacing:-.03em;line-height:1;
-  box-shadow:0 3px 9px rgba(36,88,230,.26),inset 0 1px 0 rgba(255,255,255,.3)}
-.brand .bt .c{color:#FFC839;margin-left:1px}
-.brand .bg{font-weight:800;font-size:17px;letter-spacing:.15em;margin-right:-.15em;line-height:1}
+/* 머리 이름 — 파란 타일 UP · 노란 쌍점 · GRADE 를 같은 글씨(25px · 900 · 간격 -.03em)로 한 줄에(0.3.3 · 261010 강사가 시안 C → C-2 → 나 를 골랐다).
+   세 덩어리 사이 틈은 글자 모양 기준으로 같다(25px 에서 8px 씩) — 타일 끝↔쌍점은 gap, 쌍점↔G 는 gap + 쌍점 오른쪽 여백. 둘 다 em 이라 글자 크기를 바꿔도 같게 남는다.
+   360px 아래(관리자 단추 둘)는 한 줄에 들도록 글자 · 타일을 줄인다 */
+.brand{display:inline-flex;align-items:center;gap:.28em;padding:4px 0;font-family:var(--sans);color:var(--ink);font-weight:900;font-size:25px;letter-spacing:-.03em;line-height:1;
+  -webkit-tap-highlight-color:transparent}
+.brand .bt{display:inline-flex;align-items:center;height:42px;padding:0 11px 0 12px;border-radius:12px;
+  background:linear-gradient(135deg,var(--hero-a),var(--hero-b));color:#fff;
+  box-shadow:0 4px 12px rgba(36,88,230,.26),inset 0 1px 0 rgba(255,255,255,.3)}
+.brand .c{color:var(--brand-dot);margin-right:.048em}
+@media (max-width:359px){.brand{font-size:21px}.brand .bt{height:36px;padding:0 9px 0 10px;border-radius:10px}.brand .c{margin:0 .5px 0 .2px}}
 .brand:active .bt{transform:translateY(1px);box-shadow:0 1px 4px rgba(36,88,230,.26),inset 0 1px 0 rgba(255,255,255,.3)}
 html[data-theme="dark"] .brand .bt{box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 0 0 1px rgba(86,166,246,.34)}
 .topbar .sp{flex:1}
