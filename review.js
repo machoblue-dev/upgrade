@@ -476,11 +476,14 @@ var Review = (function () {
     if (!g) return '';
     var t = g['제목'] || p['제목'] || '', s = picSmall(g);
     var data = ' data-src="' + esc(g.src) + '" data-s="' + esc(s) + '" data-w="' + esc(g.w) + '" data-h="' + esc(g.h) + '" data-t="' + esc(t) + '"';
-    return '<section class="pic"><h3 class="pic-h">그림 풀이<small>그림으로 먼저 내용을 잡아요</small></h3>' +
+    /* 0.5.1 처음에는 접혀 있다(기원T 「처음에는 접혀 있다가 누르면 보이게」) — 머리 줄을 누르면 펼쳐지고 그때 그림을 받는다(data-pic-wait → data-pic) */
+    return '<section class="pic"><button class="pic-tog" type="button" data-act="pictog" aria-expanded="false" aria-controls="pic-body">' +
+      '<span class="pic-h">그림 풀이<small>그림으로 먼저 내용을 잡아요</small></span><span class="pic-arr">펼치기</span></button>' +
+      '<div class="pic-body" id="pic-body" hidden>' +
       '<button class="pic-box" type="button" data-act="picfull"' + data + ' aria-label="그림 풀이 크게 보기" style="aspect-ratio:' + (+g.w) + ' / ' + (+g.h) + '">' +
-      '<img data-pic="' + esc(s) + '" alt="그림 풀이 — ' + esc(t) + '" width="' + (+g.w) + '" height="' + (+g.h) + '">' +
+      '<img data-pic-wait="' + esc(s) + '" alt="그림 풀이 — ' + esc(t) + '" width="' + (+g.w) + '" height="' + (+g.h) + '">' +
       '<span class="pic-wait">그림을 받는 중이에요</span></button>' +
-      '<button class="btn pic-full" type="button" data-act="picfull"' + data + '>전체 화면으로 크게 보기</button></section>';
+      '<button class="btn pic-full" type="button" data-act="picfull"' + data + '>전체 화면으로 크게 보기</button></div></section>';
   }
 
   /* ---------- 지문 한 화면 ---------- */
@@ -856,6 +859,17 @@ var Review = (function () {
         document.getElementById('resetbox').innerHTML = '<button class="reset" data-act="reset">체크한 진도 지우기</button>'; return true;
       case 'atab':
         aSwitch(b.getAttribute('data-v')); return true;
+      case 'pictog':
+        var pb = b.parentNode.querySelector('.pic-body'), show = !!(pb && pb.hidden);
+        if (!pb) return true;
+        pb.hidden = !show;
+        b.setAttribute('aria-expanded', show);
+        b.querySelector('.pic-arr').textContent = show ? '접기' : '펼치기';
+        if (show) {
+          Array.prototype.forEach.call(pb.querySelectorAll('img[data-pic-wait]'), function (im) { im.setAttribute('data-pic', im.getAttribute('data-pic-wait')); im.removeAttribute('data-pic-wait'); });
+          if (typeof Pics !== 'undefined') Pics.fill(pb);
+        }
+        return true;
       case 'picfull':
         if (typeof Pics !== 'undefined') Pics.open(b.getAttribute('data-src'), b.getAttribute('data-w'), b.getAttribute('data-h'), b.getAttribute('data-t'), b.getAttribute('data-s'));
         return true;

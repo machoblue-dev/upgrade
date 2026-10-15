@@ -691,8 +691,17 @@ a.sname{text-decoration:underline;text-underline-offset:4px;text-decoration-colo
    그림 풀이 면은 짙은 바탕 그림이라 카드 안쪽은 두 화면 모두 짙은 바탕이다. 전체 화면은 늘 검은 바탕.
    전체 화면의 닫기 · 안내는 돌린 칸(.picv-rot) 안에 있어 그림과 함께 돈다 */
 .pic{margin-top:16px}
-.pic-h{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin:0 0 8px;font-size:16px;font-weight:900;letter-spacing:-.01em}
+/* 0.5.1 접는 머리 줄 — 처음에는 접혀 있고 누르면 그림이 펼쳐진다 */
+.pic-tog{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:52px;padding:8px 14px;border-radius:14px;
+  background:var(--surface);border:1.5px solid var(--line2);box-shadow:0 4px 0 var(--line2)}
+.pic-tog:active{transform:translateY(3px);box-shadow:0 1px 0 var(--line2)}
+.pic-tog[aria-expanded="true"]{border-radius:14px 14px 6px 6px}
+.pic-h{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;min-width:0;font-size:16px;font-weight:900;letter-spacing:-.01em}
 .pic-h small{font-size:13px;font-weight:700;color:var(--muted)}
+.pic-arr{flex:none;padding:3px 10px;border-radius:999px;font-size:13px;font-weight:800;background:var(--amber-wash);color:var(--amber-ink)}
+.pic-arr::after{content:" ▾"}
+.pic-tog[aria-expanded="true"] .pic-arr::after{content:" ▴"}
+.pic-body{margin-top:10px}
 .pic-box{position:relative;display:block;width:100%;overflow:hidden;border-radius:16px;background:#1d1a17;border:1px solid var(--line2);cursor:zoom-in}
 .pic-box img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;opacity:0;transition:opacity .2s ease}
 .pic-box.ok img{opacity:1}
