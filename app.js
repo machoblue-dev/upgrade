@@ -711,6 +711,7 @@
     }
     $app.innerHTML = topHTML() + body;
     setWm();
+    if (typeof Pics !== 'undefined') Pics.fill($app);      // 그림 풀이(0.5.0) — 그린 뒤 그림을 채운다(캐시 → 서버)
     if (fromHash) {
       if (r && r.view === 't' && A.prevRoute && A.prevRoute.view === 'p' && A.listScroll[r.tab] != null) window.scrollTo(0, A.listScroll[r.tab]);
       else window.scrollTo(0, 0);
@@ -860,6 +861,7 @@
   /* ---------- 서버·진도 알림 ---------- */
   Api.on('net', function (ok) { setOffline(!ok || (typeof navigator.onLine === 'boolean' && !navigator.onLine)); if (ok) Sync.flush().catch(noop); });
   Api.on('expired', function () {
+    if (typeof Pics !== 'undefined') Pics.close(true);
     A.session = null; A.profile = null; A.pack = null; A.preview = null; A.subjects = [];
     A.flash = '다시 로그인해 주세요';
     clearReview();

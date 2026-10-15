@@ -126,6 +126,32 @@ var Api = (function () {
 
   function q(v) { return encodeURIComponent(v == null ? '' : String(v)); }
 
+  /* 그림 풀이 한 장(0.5.0) — 서버 비공개 저장소(pics)에서 로그인한 열쇠로 받는다. 돌려주는 것은 Blob.
+     저장소는 낡은 토큰을 400 · 403 + 「jwt …」 글로도 알린다 — 그때 한 번 새로 받고 다시 보낸다 */
+  async function pic(src) {
+    var path = '/storage/v1/object/authenticated/pics/' + String(src || '').split('/').map(encodeURIComponent).join('/');
+    if (session && soonExpired(session)) {
+      try { await refresh(); } catch (e) { if (e.sessionGone) throw e; }
+    }
+    async function once() {
+      var res;
+      try { res = await fetch(CONFIG.url + path, { method: 'GET', headers: headers({}, false), cache: 'no-store' }); } catch (e) { netState(false); throw makeErr(0, null, true); }
+      netState(true);
+      if (res.ok) return { ok: true, blob: await res.blob() };
+      var text = '', data = null;
+      try { text = await res.text(); } catch (e) { text = ''; }
+      if (text) { try { data = JSON.parse(text); } catch (e) { data = text; } }
+      return { ok: false, status: res.status, data: data };
+    }
+    var r = await once();
+    if (!r.ok && session && (r.status === 401 || /jwt|token/i.test(JSON.stringify(r.data || '')))) {
+      await refresh();
+      r = await once();
+    }
+    if (!r.ok) throw makeErr(r.status, r.data);
+    return r.blob;
+  }
+
   /* ── 로그인 ── */
   async function signup(p) {
     var r = await raw('POST', '/auth/v1/signup', {
@@ -214,6 +240,7 @@ var Api = (function () {
       return call('GET', '/rest/v1/packs?select=id,subject,cycle,version,hash,counts,created_at&status=eq.live&school=eq.' + q(school));
     },
     packData: function (id) { return call('GET', '/rest/v1/packs?select=data&id=eq.' + q(id)); },
+    pic: pic,
     touch: function () { return call('POST', '/rest/v1/rpc/touch', {}); },
     marksPage: function (sc, offset) {
       return call('GET', '/rest/v1/marks?select=key,state,updated_at&school=eq.' + q(sc.school) + '&subject=eq.' + q(sc.subject) +

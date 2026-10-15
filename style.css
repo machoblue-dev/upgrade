@@ -685,3 +685,31 @@ a.sname{text-decoration:underline;text-underline-offset:4px;text-decoration-colo
 .anext{display:flex;align-items:center;justify-content:center;width:100%;min-height:50px;margin-top:22px;border-radius:15px;font-weight:900;font-size:15.5px;text-align:center;
   background:var(--surface);border:1.5px solid var(--coral-line);color:var(--coral-ink);box-shadow:0 4px 0 var(--coral-line)}
 .anext:active{transform:translateY(3px);box-shadow:0 1px 0 var(--coral-line)}
+
+/* ════════ 0.5.0 — 그림 풀이(261016) ════════
+   지문 화면 「지문 읽기 | 지문 분석」 바로 아래 그림 카드(review.js picHTML) · 지문 목록 딱지 · 전체 화면 보기(pic.js).
+   그림 풀이 면은 짙은 바탕 그림이라 카드 안쪽은 두 화면 모두 짙은 바탕이다. 전체 화면은 늘 검은 바탕.
+   전체 화면의 닫기 · 안내는 돌린 칸(.picv-rot) 안에 있어 그림과 함께 돈다 */
+.pic{margin-top:16px}
+.pic-h{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin:0 0 8px;font-size:16px;font-weight:900;letter-spacing:-.01em}
+.pic-h small{font-size:13px;font-weight:700;color:var(--muted)}
+.pic-box{position:relative;display:block;width:100%;overflow:hidden;border-radius:16px;background:#1d1a17;border:1px solid var(--line2);cursor:zoom-in}
+.pic-box img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block;opacity:0;transition:opacity .2s ease}
+.pic-box.ok img{opacity:1}
+.pic-box .pic-wait{position:absolute;inset:0;display:grid;place-items:center;padding:12px;font-size:13.5px;font-weight:700;color:#d8d2c8;text-align:center}
+.pic-box.ok .pic-wait{display:none}
+.pic-full{margin-top:10px}
+.row-pic{display:inline-block;margin-top:5px;padding:1px 8px;border-radius:999px;font-size:11.5px;font-weight:800;line-height:1.6;
+  background:var(--amber-wash);color:var(--amber-ink)}
+html.picv-on,html.picv-on body{overflow:hidden;overscroll-behavior:none}
+.picv{position:fixed;inset:0;z-index:1000;background:#000;color:#fff;touch-action:none;user-select:none;-webkit-user-select:none;overflow:hidden}
+.picv-rot{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:grid;place-items:center;overflow:hidden}
+.picv.rot .picv-rot{transform:translate(-50%,-50%) rotate(90deg)}
+.picv-box{grid-area:1/1;transform-origin:50% 50%;will-change:transform}
+.picv-img{display:block;width:100%;height:100%;pointer-events:none;-webkit-user-drag:none}
+.picv-wait{grid-area:1/1;margin:0;font-size:14px;font-weight:700;color:#cfcfcf;text-align:center}
+.picv-tip{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);margin:0;padding:6px 12px;border-radius:999px;
+  background:rgba(0,0,0,.62);font-size:13px;font-weight:700;white-space:nowrap;pointer-events:none;transition:opacity .4s ease}
+.picv-tip.gone{opacity:0}
+.picv-x{position:absolute;top:10px;right:10px;z-index:2;display:inline-flex;align-items:center;gap:6px;
+  min-height:44px;padding:0 14px;border-radius:999px;background:rgba(20,20,20,.72);border:1px solid rgba(255,255,255,.28);color:#fff;font-size:15px;font-weight:800}

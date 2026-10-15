@@ -15,7 +15,9 @@
    · 묶음 차례에 없는 묶음이 있으면 뒤에 붙인다(빠진 지문이 목록에서 사라지지 않게)
    · 0.3.0 발음 듣기 단추(data-act="say") — 단어 카드 · 핵심 문장(영어를 연 뒤) · 지문 문장(누른 뒤). 읽기는 app.js 가 한다
    · 0.4.0 지문 분석 보기 — 판 지문에 「분석」 칸이 있으면 지문 화면에 단추가 서고 #a-<지문 id> 한 화면에 네 탭이 선다(아래 절)
-     0.4.1 단추를 제목 바로 아래 「지문 읽기 | 지문 분석」 전환으로 올렸다 · 지문 목록 머리에 안내 한 줄(강사 「찾아 들어가기가 다소 어렵다」) */
+     0.4.1 단추를 제목 바로 아래 「지문 읽기 | 지문 분석」 전환으로 올렸다 · 지문 목록 머리에 안내 한 줄(강사 「찾아 들어가기가 다소 어렵다」)
+   · 0.5.0 그림 풀이 — 판 지문에 「그림」 칸이 있으면 전환 바로 아래 그림 카드가 서고 「전체 화면으로 크게 보기」가 pic.js 의 가로 전체 화면을 연다.
+     지문 목록에는 그 지문에 「그림 풀이」 딱지가 붙는다. 그림을 받는 일은 app.js 가 그린 뒤 Pics.fill 로 한다 */
 var Review = (function () {
   'use strict';
   var C = null;                                        // 지금 판 문맥 — setup() 이 만든다
@@ -261,7 +263,8 @@ var Review = (function () {
         var on = st(p.key) === 'done';
         out += '<a class="row" href="#p-' + enc(p.id) + '"><span><span class="row-l">' + esc(p['이름']) + '</span>' +
           '<span class="row-t">' + esc(p['제목']) + '</span>' +
-          (p['영제목'] ? '<span class="row-e">' + esc(p['영제목']) + '</span>' : '') + '</span>' +
+          (p['영제목'] ? '<span class="row-e">' + esc(p['영제목']) + '</span>' : '') +
+          (picOf(p) ? '<span class="row-pic">그림 풀이</span>' : '') + '</span>' +
           '<span class="dot' + (on ? ' on' : '') + '" role="img" aria-label="' + (on ? '다 봄' : '아직') + '"></span></a>';
       });
       out += '</section>';
@@ -460,6 +463,26 @@ var Review = (function () {
       '<div id="wlist">' + (U().wlist ? wordTable() : '') + '</div>';
   }
 
+  /* ---------- 그림 풀이(0.5.0) — 그림은 서버 비공개 저장소에 있고 src 는 그 안 이름이다(학교 폴더 표 / 내용 해시.webp) ---------- */
+  var PICNAME = /^[0-9a-f]{12}\/[0-9a-f]{16}\.webp$/;
+  function picOf(p) {
+    var g = p && p['그림'];
+    return g && typeof g === 'object' && typeof g.src === 'string' && PICNAME.test(g.src) && +g.w > 0 && +g.h > 0 ? g : null;
+  }
+  /* 큰 그림(src · 4배)은 전체 화면에서만 · 지문 화면 카드는 작은 그림(작은 · 1200px)을 쓴다 — 작은 칸이 없으면 큰 그림 하나로 */
+  function picSmall(g) { return typeof g['작은'] === 'string' && PICNAME.test(g['작은']) ? g['작은'] : g.src; }
+  function picHTML(p) {
+    var g = picOf(p);
+    if (!g) return '';
+    var t = g['제목'] || p['제목'] || '', s = picSmall(g);
+    var data = ' data-src="' + esc(g.src) + '" data-s="' + esc(s) + '" data-w="' + esc(g.w) + '" data-h="' + esc(g.h) + '" data-t="' + esc(t) + '"';
+    return '<section class="pic"><h3 class="pic-h">그림 풀이<small>그림으로 먼저 내용을 잡아요</small></h3>' +
+      '<button class="pic-box" type="button" data-act="picfull"' + data + ' aria-label="그림 풀이 크게 보기" style="aspect-ratio:' + (+g.w) + ' / ' + (+g.h) + '">' +
+      '<img data-pic="' + esc(s) + '" alt="그림 풀이 — ' + esc(t) + '" width="' + (+g.w) + '" height="' + (+g.h) + '">' +
+      '<span class="pic-wait">그림을 받는 중이에요</span></button>' +
+      '<button class="btn pic-full" type="button" data-act="picfull"' + data + '>전체 화면으로 크게 보기</button></section>';
+  }
+
   /* ---------- 지문 한 화면 ---------- */
   function passageHTML(id) {
     var p = C.byId[id], i = p._i, prev = C.P[i - 1], next = C.P[i + 1];
@@ -472,6 +495,7 @@ var Review = (function () {
     h += '<header class="phead"><p class="eyebrow">' + esc(pLabel(p)) + '</p><h2>' + esc(p['제목']) + '</h2>' +
       (p['영제목'] ? '<p class="en-t">' + esc(p['영제목']) + '</p>' : '') + '</header>';
     h += pSwitch(p, 'p');
+    h += picHTML(p);
     h += '<div class="gist"><span class="lab">한 줄 요약</span><p>' + esc(p['한줄']) + '</p></div>';
     if ((p['흐름'] || []).length) h += '<ol class="flow" aria-label="글의 흐름">' + p['흐름'].map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ol>';
     h += '<div class="modebar" role="group" aria-label="보는 방식"><button data-act="mode" data-v="en" aria-pressed="' + (mode === 'en') + '">영어로 읽기</button>' +
@@ -832,6 +856,9 @@ var Review = (function () {
         document.getElementById('resetbox').innerHTML = '<button class="reset" data-act="reset">체크한 진도 지우기</button>'; return true;
       case 'atab':
         aSwitch(b.getAttribute('data-v')); return true;
+      case 'picfull':
+        if (typeof Pics !== 'undefined') Pics.open(b.getAttribute('data-src'), b.getAttribute('data-w'), b.getAttribute('data-h'), b.getAttribute('data-t'), b.getAttribute('data-s'));
+        return true;
       case 'achunk':
         var ol = b.nextElementSibling, show = !!(ol && ol.hidden);
         if (ol) ol.hidden = !show;
