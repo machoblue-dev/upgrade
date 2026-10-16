@@ -7,8 +7,9 @@
      그림은 서버의 비공개 저장소(pics)에 있고 로그인한 그 학교 학생과 관리자에게만 내준다(서버 규칙 · 261016 그림저장소.sql).
      앱 파일(공개 저장소)에는 그림도 글도 안 들어간다
    · 받은 그림은 이 폰의 캐시(upgrade-pics-1)에 둔다 — 이름이 내용 해시라 바뀌지 않으므로 다시 열 때 서버에 안 간다(끊겨도 보인다)
-   · 전체 화면 — Fullscreen API 로 화면을 채우고 screen.orientation.lock('landscape') 로 가로로 돌린다.
-     잠금이 안 되는 곳(아이폰 사파리 · 카톡 안 브라우저 등)에서 폰을 세운 채면 그림을 90도 돌려 화면을 꽉 채운다
+   · 전체 화면 — 앱 안 검은 칸(position:fixed)이 화면을 채운다. 폰을 세운 채면 그림을 90도 돌려 화면을 꽉 채운다.
+     0.5.2(261017 기원T 「전체화면 닫는 방법 안내 팝업이 계속 떠 있다」) — 브라우저 Fullscreen API 와 가로 잠금을 더는 부르지 않는다.
+     부르면 폰이 「전체 화면을 끝내려면 …」 안내를 아래에 띄우고 그 안내가 사라지지 않는다(앱에서 못 끈다)
    · 두 손가락으로 벌리기 · 오므리기 · 확대했을 때 한 손가락으로 옮기기 · 두 번 눌러 크게/원래대로 · 닫기 단추 · 뒤로 가기 · Esc */
 var Pics = (function () {
   'use strict';
@@ -188,7 +189,7 @@ var Pics = (function () {
 
   function fsEl() { return document.fullscreenElement || document.webkitFullscreenElement || null; }
 
-  /* 열기 — 누른 단추의 손짓 안에서 바로 전체 화면을 청한다(손짓이 끝나면 브라우저가 안 받아 준다) */
+  /* 열기 — 앱 안 칸으로만 화면을 채운다(0.5.2 · 브라우저 전체 화면은 안 청한다) */
   function open(src, w, h, title, small) {
     if (!src) return;
     build();
@@ -203,20 +204,6 @@ var Pics = (function () {
     document.documentElement.classList.add('picv-on');
     try { history.pushState({ upgradePic: 1 }, '', location.href); S.pushed = true; } catch (e) { S.pushed = false; }
     layout();
-    var req = V.el.requestFullscreen || V.el.webkitRequestFullscreen;
-    var after = function () {
-      S.fs = !!fsEl();
-      var o = screen.orientation;
-      if (o && typeof o.lock === 'function') {
-        o.lock('landscape').then(function () { if (S.open) { S.locked = true; layout(); } }, function () { layout(); });
-      } else layout();
-    };
-    if (req) {
-      try {
-        var r = req.call(V.el, { navigationUI: 'hide' });
-        if (r && typeof r.then === 'function') r.then(after, after); else setTimeout(after, 60);
-      } catch (e) { after(); }
-    } else after();
     /* 큰 그림(4배)이 없으면 카드에 쓴 작은 그림을 먼저 보이고, 큰 그림이 오면 바꿔 끼운다 */
     S.big = false;
     if (mem[src]) { V.img.src = mem[src]; V.wait.hidden = true; S.big = true; }
