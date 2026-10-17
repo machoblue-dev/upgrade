@@ -17,7 +17,9 @@
    · 0.4.0 지문 분석 보기 — 판 지문에 「분석」 칸이 있으면 지문 화면에 단추가 서고 #a-<지문 id> 한 화면에 네 탭이 선다(아래 절)
      0.4.1 단추를 제목 바로 아래 「지문 읽기 | 지문 분석」 전환으로 올렸다 · 지문 목록 머리에 안내 한 줄(강사 「찾아 들어가기가 다소 어렵다」)
    · 0.5.0 그림 풀이 — 판 지문에 「그림」 칸이 있으면 전환 바로 아래 그림 카드가 서고 「전체 화면으로 크게 보기」가 pic.js 의 가로 전체 화면을 연다.
-     지문 목록에는 그 지문에 「그림 풀이」 딱지가 붙는다. 그림을 받는 일은 app.js 가 그린 뒤 Pics.fill 로 한다 */
+     지문 목록에는 그 지문에 「그림 풀이」 딱지가 붙는다. 그림을 받는 일은 app.js 가 그린 뒤 Pics.fill 로 한다
+   · 0.6.0 Top Tier 서술형 — 서술형 모양 「글」(물음 아래 글상자: 지문 · 요약문 · 접힌 「지문 전체」) · 힌트를 하나씩 여는 단추 ·
+     답 아래 「이것도 맞아요」 · 「깎이는 곳」 · 머리에 배점. 판 데이터는 _도구\폰복습\탑티어칸.py 가 만든다 */
 var Review = (function () {
   'use strict';
   var C = null;                                        // 지금 판 문맥 — setup() 이 만든다
@@ -313,12 +315,27 @@ var Review = (function () {
     return '<li>' + (m ? '<span class="ok">' + m[1] + '</span>' + esc(m[2]) : esc(x)) + '</li>';
   }
   function stateTag(s, okWord) { return s ? '<span class="state ' + s + '">' + (s === 'ok' ? okWord : '다시 볼 것') + '</span>' : ''; }
+  /* Top Tier 서술형(0.6.0 · 261017) — 모양 「글」의 글상자(지문 · 요약문 · 지문 전체)와 힌트 · 이것도 맞아요 · 깎이는 곳 */
+  function wBoxHTML(b) {
+    var body = (b['글'] || []).map(function (x) { return '<p class="en">' + blankify(x) + '</p>'; }).join('');
+    return '<div class="under wbox"><span class="lab">' + esc(b['라벨']) + '</span>' +
+      (b['접음'] ? '<div class="wbox-b" hidden>' + body + '</div><button class="link-btn" data-act="wbox" aria-expanded="false">펼치기</button>' : body) + '</div>';
+  }
+  function wHintHTML(list) {
+    return '<div class="whints">' + list.map(function (x, i) {
+      return '<button class="link-btn" data-act="whint"' + (i ? ' hidden' : '') + '>' + esc(x[0]) + ' 보기</button>' +
+        '<p class="whint" hidden><span class="lab">' + esc(x[0]) + '</span>' + esc(x[1]) + '</p>';
+    }).join('') + '</div>';
+  }
   function wCard(w, withSrc) {
     var s = okre(st(w.key));
     var h = '<article class="card" data-key="' + esc(w.key) + '" data-kind="w"><div class="card-h"><span class="tag">' + esc(w['틀']) + '</span>' +
+      (w['배점'] ? '<span class="src">' + esc(w['배점']) + '점</span>' : '') +
       (withSrc ? '<span class="src">' + esc(wSrc(w)) + '</span>' : '') + stateTag(s, '맞음') + '</div>';
     var m = w['모양'];
-    if (m === '밑줄') {
+    if (m === '글') {
+      h += '<p class="q">' + esc(w['물음']) + '</p>' + (w['글상자'] || []).map(wBoxHTML).join('');
+    } else if (m === '밑줄') {
       h += '<p class="q">' + esc(w['물음']) + '</p>' +
         '<div class="under"><span class="lab">' + esc(w['밑줄라벨'] || '밑줄 친 (A)') + '</span><p class="en" style="margin:0">' + underline(esc(w['밑줄문'])) + '</p>' +
         (w['밑줄해석'] ? '<p class="sub-ko" hidden>' + esc(w['밑줄해석']) + '</p><button class="link-btn" data-act="wko">해석 보기</button>' : '') + '</div>';
@@ -337,9 +354,13 @@ var Review = (function () {
     if (w['선택지'] && w['선택지'].length) h += '<ul class="opts">' + w['선택지'].map(optHTML).join('') + '</ul>';
     if (w['보기'] && w['보기'].length) h += '<div class="bogi"><span class="lab">보기</span><div class="bogi-w">' + w['보기'].map(function (x) { return '<span class="en">' + esc(x) + '</span>'; }).join('') + '</div></div>';
     if (w['조건들'] && w['조건들'].length) h += '<ul class="cond">' + w['조건들'].map(function (c) { return '<li>' + esc(c) + '</li>'; }).join('') + '</ul>';
+    if (w['힌트'] && w['힌트'].length) h += wHintHTML(w['힌트']);
     h += '<button class="reveal" data-act="wshow">답 보기</button><div class="ans" hidden>' +
       '<span class="lab">답</span><p class="' + (/[가-힣]/.test(w['답'] || '') ? 'ko-a' : 'en') + '" style="margin:0">' + esc(w['답']) + '</p>' +
       (w['원문'] ? '<p class="orig">' + esc(w['원문라벨'] || '원문') + ' — <span class="en">' + esc(w['원문']) + '</span></p>' : '') +
+      (w['맞다'] ? '<p class="tip"><span class="lab">이것도 맞아요</span>' + esc(w['맞다']) + '</p>' : '') +
+      (w['깎'] && w['깎'].length ? '<div class="tip"><span class="lab">깎이는 곳</span><ul class="wcut">' +
+        w['깎'].map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div>' : '') +
       (w['포인트'] ? '<p class="tip"><span class="lab">빠뜨리기 쉬운 곳</span>' + esc(w['포인트']) + '</p>' : '') +
       '<div class="judge"><button data-act="wj" data-v="ok" aria-pressed="' + (s === 'ok') + '">맞았어요</button><button data-act="wj" data-v="re" aria-pressed="' + (s === 're') + '">다시 볼래요</button></div>' +
       '</div>' + repBtn(w.key, '서술형 · ' + (wSrc(w) || w['틀'] || '')) + '</article>';
@@ -812,6 +833,13 @@ var Review = (function () {
         refreshTabs(); return true;
       case 'wko':
         var ko = b.parentNode.querySelector('.sub-ko'); ko.hidden = !ko.hidden; b.textContent = ko.hidden ? '해석 보기' : '해석 접기'; return true;
+      case 'wbox':
+        var bx = b.parentNode.querySelector('.wbox-b'); bx.hidden = !bx.hidden;
+        b.setAttribute('aria-expanded', !bx.hidden); b.textContent = bx.hidden ? '펼치기' : '접기'; return true;
+      case 'whint':
+        var hp = b.nextElementSibling; hp.hidden = false; b.hidden = true;
+        if (hp.nextElementSibling) hp.nextElementSibling.hidden = false;
+        return true;
       case 'wshow': case 'gshow':
         card = b.closest('.card'); card.querySelector('.ans').hidden = false; b.hidden = true; return true;
       case 'wj': case 'gj':

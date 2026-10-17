@@ -265,6 +265,15 @@ mark{background:linear-gradient(transparent 56%,var(--hl) 56%);color:inherit;pad
 .cond{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:4px}
 .cond li{font-size:13.5px;color:var(--ink2);padding-left:16px;position:relative;line-height:1.5}
 .cond li::before{content:"";position:absolute;left:0;top:.45em;width:8px;height:8px;border:2px solid var(--coral);border-radius:50%}
+/* Top Tier 서술형(0.6.0) — 글상자 · 힌트 · 깎이는 곳 */
+.wbox p.en{margin:6px 0 0;font-size:15.5px;line-height:1.65}
+.wbox .lab+p.en,.wbox .lab+.wbox-b>p.en:first-child{margin-top:0}
+.wbox .link-btn{margin-top:2px}
+.whints{margin-top:10px;display:grid;gap:6px;justify-items:start}
+.whint{margin:0;padding:9px 12px;border-radius:12px;background:var(--sunk);font-size:14px;line-height:1.6;color:var(--ink2);justify-self:stretch}
+.whint .lab{margin-bottom:2px}
+.wcut{margin:2px 0 0;padding-left:18px;display:grid;gap:3px}
+.wcut li{font-size:14px;line-height:1.55}
 .reveal{margin-top:14px;width:100%;min-height:48px;border-radius:14px;background:var(--btn2);color:var(--on-btn2);font-weight:900;font-size:15px;text-align:center;
   box-shadow:0 4px 0 var(--btn2-edge)}
 .ans{margin-top:14px;border-top:1.5px dashed var(--line2);padding-top:12px}
