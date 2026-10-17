@@ -19,7 +19,8 @@
    · 0.5.0 그림 풀이 — 판 지문에 「그림」 칸이 있으면 전환 바로 아래 그림 카드가 서고 「전체 화면으로 크게 보기」가 pic.js 의 가로 전체 화면을 연다.
      지문 목록에는 그 지문에 「그림 풀이」 딱지가 붙는다. 그림을 받는 일은 app.js 가 그린 뒤 Pics.fill 로 한다
    · 0.6.0 Top Tier 서술형 — 서술형 모양 「글」(물음 아래 글상자: 지문 · 요약문 · 접힌 「지문 전체」) · 힌트를 하나씩 여는 단추 ·
-     답 아래 「이것도 맞아요」 · 「깎이는 곳」 · 머리에 배점. 판 데이터는 _도구\폰복습\탑티어칸.py 가 만든다 */
+     답 아래 「이것도 맞아요」 · 「깎이는 곳」 · 머리에 배점. 판 데이터는 _도구\폰복습\탑티어칸.py 가 만든다
+     0.6.1 서술형이 다 Top Tier 문항인 판은 이름이 「Top Tier 서술형」 — 탭은 「Top Tier」를 작은 글씨로 위에 얹는다(C.TT) */
 var Review = (function () {
   'use strict';
   var C = null;                                        // 지금 판 문맥 — setup() 이 만든다
@@ -103,9 +104,11 @@ var Review = (function () {
       (p['핵심'] || []).forEach(function (n, i) { KEYS.push({ p: p, n: n, key: ks[i] || ('k:' + p.id + ':#' + n) }); });
     });
     var HASMARK = P.some(function (p) { return (p['문장'] || []).some(function (s) { return (s['짚음'] || []).length; }); });
+    /* 0.6.1 — 서술형이 다 Top Tier 문항(모양 「글」)인 판은 이름을 「Top Tier 서술형」으로(261017 기원T) */
+    var TT = W.length > 0 && W.every(function (w) { return w['모양'] === '글'; });
     var TABS = [
       { id: 'jimun', name: '지문', n: P.length }, { id: 'haeksim', name: '핵심 문장', n: KEYS.length },
-      { id: 'seosul', name: '서술형', n: W.length }, { id: 'eobeop', name: '어법', n: G.length }, { id: 'dan', name: '단어', n: V.length }
+      { id: 'seosul', name: TT ? 'Top Tier 서술형' : '서술형', n: W.length }, { id: 'eobeop', name: '어법', n: G.length }, { id: 'dan', name: '단어', n: V.length }
     ].filter(function (t) { return t.n > 0; });       // 내용이 없는 탭은 세우지 않는다
     var ui = env.ui;
     if (!ui.f || typeof ui.f !== 'object') ui.f = {};
@@ -115,7 +118,7 @@ var Review = (function () {
     C = {
       D: D, P: P, W: W, G: G, V: V, byId: byId, wByP: wByP, vByP: vByP, KEYS: KEYS, UV: UV,
       ORDER: 차례(D['묶음차례'], P, '묶음'), GORDER: 차례(D['어법묶음'], G, '묶음'),
-      HASMARK: HASMARK, TABS: TABS, env: env
+      HASMARK: HASMARK, TABS: TABS, TT: TT, env: env
     };
   }
 
@@ -220,7 +223,10 @@ var Review = (function () {
   function tabsHTML(cur) {
     return '<div id="tabs-anchor"></div><nav class="tabs" role="tablist" aria-label="복습 종류" style="grid-template-columns:repeat(' + Math.max(C.TABS.length, 1) + ',minmax(0,1fr))">' +
       C.TABS.map(function (t) {
-        return '<a class="tab" role="tab" href="#' + t.id + '" aria-selected="' + (t.id === cur) + '"><span>' + t.name + '</span><i>' + tabCount(t.id) + '</i></a>';
+        /* 탭 다섯 칸은 폭이 같아 「Top Tier 서술형」이 한 줄에 안 든다 — 「Top Tier」를 작은 글씨로 위에 얹는다 */
+        var nm = t.id === 'seosul' && C.TT ? '<b class="tt">Top Tier</b><span>서술형</span>' : '<span>' + t.name + '</span>';
+        return '<a class="tab" role="tab" href="#' + t.id + '" aria-selected="' + (t.id === cur) + '"' +
+          (t.id === 'seosul' && C.TT ? ' aria-label="' + t.name + '"' : '') + '>' + nm + '<i>' + tabCount(t.id) + '</i></a>';
       }).join('') + '</nav>';
   }
   function chipVal(key, items) {
@@ -363,7 +369,7 @@ var Review = (function () {
         w['깎'].map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div>' : '') +
       (w['포인트'] ? '<p class="tip"><span class="lab">빠뜨리기 쉬운 곳</span>' + esc(w['포인트']) + '</p>' : '') +
       '<div class="judge"><button data-act="wj" data-v="ok" aria-pressed="' + (s === 'ok') + '">맞았어요</button><button data-act="wj" data-v="re" aria-pressed="' + (s === 're') + '">다시 볼래요</button></div>' +
-      '</div>' + repBtn(w.key, '서술형 · ' + (wSrc(w) || w['틀'] || '')) + '</article>';
+      '</div>' + repBtn(w.key, tabName('seosul') + ' · ' + (wSrc(w) || w['틀'] || '')) + '</article>';
     return h;
   }
   function seosulHTML() {
@@ -547,7 +553,7 @@ var Review = (function () {
       return '<span class="pair"><span class="w">' + esc(r.en) + '</span> <span class="a">↔ ' + esc(r['반']) + '</span>' + (r['문장'] ? '<span class="x">문장 ' + esc(r['문장']) + '</span>' : '') + '</span>';
     }).join('') + '</div><p class="hint">' + esc(C.D['바꿔치기말'] || '낱말 하나가 반대말로 바뀌면 글의 뜻이 뒤집혀요.') + '</p></section>';
     var ws = C.wByP[p.id] || [];
-    if (ws.length) h += '<section class="blk"><h3>이 지문 서술형 <small>' + ws.length + '문항</small></h3><div class="cards">' + ws.map(function (w) { return wCard(w, false); }).join('') + '</div></section>';
+    if (ws.length) h += '<section class="blk"><h3>이 지문 ' + tabName('seosul') + ' <small>' + ws.length + '문항</small></h3><div class="cards">' + ws.map(function (w) { return wCard(w, false); }).join('') + '</div></section>';
     var vs = C.vByP[p.id] || [];
     if (vs.length) h += '<section class="blk"><h3>이 지문 단어 <small>' + vs.length + '개 · 누르면 뜻</small></h3><ul class="wl">' + vs.map(wordItem).join('') + '</ul></section>';
     var done = st(p.key) === 'done';
