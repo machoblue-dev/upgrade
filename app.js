@@ -764,6 +764,41 @@
     Sync.flush().catch(noop);
   }
 
+  /* ---------- 학습시간(0.8.0 · 서버\261019_UPGRADE_학습시간.sql) ----------
+     학생 계정이 화면에 앱을 띄워 두고 5분 안에 한 번이라도 만진 동안만 초를 센다(관리자 · 미리보기 · 막힘은 안 센다).
+     1분이 모이면 보내고, 화면을 떠날 때는 남은 것을 바로 보낸다. 못 보내면 들고 있다가 다음에 함께 보낸다.
+     서버에 add_study 가 없으면(명령문을 아직 안 돌린 서버) 이 화면에서는 더 보내지 않는다 */
+  var STUDY_IDLE = 300000, STUDY_TICK = 10000;
+  var study = { sec: 0, uid: '', tick: Date.now(), touched: Date.now(), off: false, busy: false };
+  function studyOn() {
+    var p = A.profile;
+    return !study.off && !A.preview && !A.noProfile && !!(uid() && p && p.role === 'student' && !p.blocked);
+  }
+  function studyCount(leaving) {
+    var now = Date.now(), gap = now - study.tick;
+    study.tick = now;
+    if (study.uid !== uid()) { study.sec = 0; study.uid = uid(); }   // 다른 계정의 초를 넘겨 보내지 않는다
+    if ((!leaving && document.visibilityState !== 'visible') || !studyOn() || now - study.touched > STUDY_IDLE) return;
+    study.sec += Math.min(Math.max(gap, 0), STUDY_TICK * 2) / 1000;   // 폰이 잠들었다 깬 긴 틈은 세지 않는다
+  }
+  function studySend(keepalive) {
+    var n = Math.min(Math.floor(study.sec), 600);
+    if (study.busy || study.off || n < (keepalive ? 5 : 60) || study.uid !== uid()) return;
+    study.busy = true;
+    study.sec -= n;
+    Api.addStudy(n, keepalive).then(function () { study.busy = false; }, function (e) {
+      study.busy = false;
+      if (e && (e.status === 404 || e.code === 'PGRST202')) { study.off = true; study.sec = 0; return; }
+      if (study.uid === uid()) study.sec = Math.min(study.sec + n, 3600);
+    });
+  }
+  function studyTouch() { study.touched = Date.now(); }
+  ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(function (t) {
+    document.addEventListener(t, studyTouch, { capture: true, passive: true });
+  });
+  window.addEventListener('scroll', studyTouch, { capture: true, passive: true });
+  setInterval(function () { studyCount(); studySend(false); }, STUDY_TICK);
+
   /* ---------- 누르기 ---------- */
   document.addEventListener('click', function (ev) {
     var b = ev.target.closest('[data-act],[data-chip]');
@@ -846,11 +881,13 @@
       hush();
       saveUi(true);
       Sync.flush({ keepalive: true }).catch(noop);         // 화면을 떠날 때 보낸다
+      studyCount(true); studySend(true);                   // 떠나기 전까지 센 학습시간도 보낸다
     } else {
+      study.tick = study.touched = Date.now();             // 숨어 있던 동안은 세지 않고, 돌아온 것을 만진 것으로 본다
       onVisible().catch(noop);
     }
   });
-  window.addEventListener('pagehide', function () { saveUi(true); Sync.flush({ keepalive: true }).catch(noop); });
+  window.addEventListener('pagehide', function () { saveUi(true); Sync.flush({ keepalive: true }).catch(noop); studySend(true); });
   window.addEventListener('online', function () {
     setOffline(false);
     Sync.flush().catch(noop);

@@ -242,6 +242,8 @@ var Api = (function () {
     packData: function (id) { return call('GET', '/rest/v1/packs?select=data&id=eq.' + q(id)); },
     pic: pic,
     touch: function () { return call('POST', '/rest/v1/rpc/touch', {}); },
+    /* 학습시간 더하기(0.8.0 · 서버\261019_UPGRADE_학습시간.sql) — 화면을 떠날 때는 keepalive 로 보낸다 */
+    addStudy: function (sec, keepalive) { return call('POST', '/rest/v1/rpc/add_study', { sec: sec }, { keepalive: !!keepalive }); },
     marksPage: function (sc, offset) {
       return call('GET', '/rest/v1/marks?select=key,state,updated_at&school=eq.' + q(sc.school) + '&subject=eq.' + q(sc.subject) +
         '&cycle=eq.' + q(sc.cycle) + '&order=key&limit=1000&offset=' + (offset | 0));
@@ -257,8 +259,15 @@ var Api = (function () {
     adminPacks: function () {
       return call('GET', '/rest/v1/packs?select=id,school,subject,cycle,version,status,hash,counts,note,created_at&order=school.asc,subject.asc,created_at.desc');
     },
-    adminProfiles: function () {
-      return call('GET', '/rest/v1/profiles?select=id,name,school,role,blocked,email,created_at,last_seen&order=school.asc,name.asc');
+    /* study_sec 칸이 없는 서버(학습시간 명령문을 아직 안 돌림)면 칸 없이 다시 받는다 — 학생 관리가 멈추지 않게 */
+    adminProfiles: async function () {
+      var base = '/rest/v1/profiles?select=id,name,school,role,blocked,email,created_at,last_seen';
+      try {
+        return await call('GET', base + ',study_sec&order=school.asc,name.asc');
+      } catch (e) {
+        if (e.status === 400 && (e.code === '42703' || /study_sec/.test(e.msg))) return call('GET', base + '&order=school.asc,name.asc');
+        throw e;
+      }
     },
     adminMarks: function (school) { return call('POST', '/rest/v1/rpc/admin_marks', { p_school: school }); },
     rpc: function (name, args) { return call('POST', '/rest/v1/rpc/' + name, args || {}); },

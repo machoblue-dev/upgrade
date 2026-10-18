@@ -500,6 +500,7 @@ body.modal-open{overflow:hidden}
 .anav{padding-top:10px}
 .anav .chip{border-radius:12px;padding:8px 13px}
 .anav .chip[aria-current="page"]{background:var(--coral);border-color:var(--coral);color:#fff;box-shadow:0 3px 0 var(--coral-edge)}
+.a-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}   /* 0.8.0 학생 관리 — 학교로 거르기 | 정렬 */
 .a-sum{margin:10px 0;font-size:13.5px;font-weight:700;color:var(--ink2);background:var(--yellow-wash);border:1px solid var(--yellow-line);border-radius:12px;padding:8px 12px}
 .back-l{display:inline-flex;align-items:center;min-height:40px;font-weight:800;color:var(--coral-ink)}
 .scard{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:13px 14px;margin-top:10px;min-width:0;box-shadow:var(--shadow)}
