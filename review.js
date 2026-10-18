@@ -20,7 +20,9 @@
      지문 목록에는 그 지문에 「그림 풀이」 딱지가 붙는다. 그림을 받는 일은 app.js 가 그린 뒤 Pics.fill 로 한다
    · 0.6.0 Top Tier 서술형 — 서술형 모양 「글」(물음 아래 글상자: 지문 · 요약문 · 접힌 「지문 전체」) · 힌트를 하나씩 여는 단추 ·
      답 아래 「이것도 맞아요」 · 「깎이는 곳」 · 머리에 배점. 판 데이터는 _도구\폰복습\탑티어칸.py 가 만든다
-     0.6.1 서술형이 다 Top Tier 문항인 판은 이름이 「Top Tier 서술형」 — 탭은 「Top Tier」를 작은 글씨로 위에 얹는다(C.TT) */
+     0.6.1 서술형이 다 Top Tier 문항인 판은 이름이 「Top Tier 서술형」 — 탭은 「Top Tier」를 작은 글씨로 위에 얹는다(C.TT)
+   · 0.7.0 The Concise — 판 지문에 「콘사이스」 칸이 있으면 전환에 셋째 칸 「The Concise」가 서고 #c-<지문 id> 한 화면에 종이 콘사이스
+     한 면을 같은 차례로 싣는다(아래 절). 판 데이터는 _도구\폰복습\콘사이스칸.py 가 만든다 */
 var Review = (function () {
   'use strict';
   var C = null;                                        // 지금 판 문맥 — setup() 이 만든다
@@ -156,6 +158,7 @@ var Review = (function () {
     if (!C) return null;
     if (h.indexOf('p-') === 0) return C.byId[h.slice(2)] ? { view: 'p', id: h.slice(2) } : null;
     if (h.indexOf('a-') === 0) return hasA(C.byId[h.slice(2)]) ? { view: 'a', id: h.slice(2) } : null;   // 지문 분석 보기(0.4.0)
+    if (h.indexOf('c-') === 0) return hasC(C.byId[h.slice(2)]) ? { view: 'c', id: h.slice(2) } : null;   // The Concise(0.7.0)
     for (var i = 0; i < C.TABS.length; i++) if (C.TABS[i].id === h) return { view: 't', tab: h };
     return null;
   }
@@ -167,9 +170,9 @@ var Review = (function () {
     if (!r) return '';
     if (r.view === 't') return tabName(r.tab);
     var p = C.byId[r.id];
-    return pLabel(p) + ' — ' + p['제목'] + (r.view === 'a' ? ' · 지문 분석' : '');
+    return pLabel(p) + ' — ' + p['제목'] + (r.view === 'a' ? ' · 지문 분석' : r.view === 'c' ? ' · The Concise' : '');
   }
-  function href(h) { return h.indexOf('p-') === 0 || h.indexOf('a-') === 0 ? h.slice(0, 2) + enc(h.slice(2)) : h; }
+  function href(h) { return h.indexOf('p-') === 0 || h.indexOf('a-') === 0 || h.indexOf('c-') === 0 ? h.slice(0, 2) + enc(h.slice(2)) : h; }
 
   function counts() {
     function n(list, keyOf, s) { var c = 0; each(list, function (x) { if (st(keyOf(x)) === s) c++; }); return c; }
@@ -257,10 +260,18 @@ var Review = (function () {
   }
 
   /* ---------- 탭: 지문 ---------- */
+  /* 지문 목록 머리 안내 한 줄(0.4.1) — 0.7.0 The Concise 칸이 있는 판이면 함께 알린다 */
+  function ahintHTML() {
+    var a = C.P.some(hasA), c = C.P.some(hasC);
+    if (!a && !c) return '';
+    return '<p class="ahint-card">' + (a && c ? '<b>지문을 열면 맨 위에 「지문 분석」과 「The Concise」가 있어요.</b>The Concise는 지문 하나를 한 장에 모아 정리한 거예요.'
+      : a ? '<b>지문을 열면 맨 위에 「지문 분석」이 있어요.</b>구조·흐름 · 문장별 해설 · 문법 · 주제 문장을 볼 수 있어요.'
+        : '<b>지문을 열면 맨 위에 「The Concise」가 있어요.</b>지문 하나를 한 장에 모아 정리한 거예요.') + '</p>';
+  }
   function jimunHTML() {
     var items = grpItems(), f = chipVal('jimun', items);
     var out = '<p class="intro">지문을 누르면 문장마다 해석이 나와요. 한글을 보고 영어를 떠올리는 방식으로도 볼 수 있어요.</p>' +
-      (C.P.some(hasA) ? '<p class="ahint-card"><b>지문을 열면 맨 위에 「지문 분석」이 있어요.</b>구조·흐름 · 문장별 해설 · 문법 · 주제 문장을 볼 수 있어요.</p>' : '') +
+      ahintHTML() +
       chipsHTML('jimun', items);
     C.ORDER.forEach(function (g) {
       if (f !== 'all' && f !== g) return;
@@ -732,12 +743,17 @@ var Review = (function () {
   /* 지문 읽기 | 지문 분석 전환(0.4.1 · 261010 강사 「더 보기 쉬운 곳에 · 학생들이 찾아 들어가기가 다소 어렵다」) —
      지문 화면과 분석 화면의 제목 바로 아래 같은 자리에 선다. 첫 화면에서 바로 보이게 흐름 아래 단추(0.4.0)를 여기로 올렸다.
      지금 보는 쪽은 채운 칸, 갈 쪽은 누르는 단추 모양이다. 분석 칸이 없는 지문에는 안 선다 */
+  /* 0.7.0 The Concise 칸이 있으면 셋째 칸이 선다(지문 읽기 | 지문 분석 | The Concise) — 칸이 셋이면 nav 에 data-n="3".
+     칸이 둘이면 0.4.1 과 글자까지 같다. 지문 화면에서 갈 쪽 링크에 클래스(ago · cgo)를 달아 시험이 쓴다 */
   function pSwitch(p, cur) {
-    if (!hasA(p)) return '';
-    var 읽기 = '지문 읽기', 분석 = '지문 분석';
-    return '<nav class="pswitch" aria-label="지문 보는 방식">' +
-      (cur === 'p' ? '<span class="ps-on" aria-current="page">' + 읽기 + '</span><a class="ago" href="#a-' + enc(p.id) + '">' + 분석 + '</a>'
-        : '<a href="#p-' + enc(p.id) + '">' + 읽기 + '</a><span class="ps-on" aria-current="page">' + 분석 + '</span>') + '</nav>';
+    var it = [['p', '지문 읽기', '']];
+    if (hasA(p)) it.push(['a', '지문 분석', 'ago']);
+    if (hasC(p)) it.push(['c', 'The Concise', 'cgo']);
+    if (it.length < 2) return '';
+    return '<nav class="pswitch"' + (it.length > 2 ? ' data-n="3"' : '') + ' aria-label="지문 보는 방식">' + it.map(function (x) {
+      return x[0] === cur ? '<span class="ps-on" aria-current="page">' + x[1] + '</span>'
+        : '<a' + (cur === 'p' && x[2] ? ' class="' + x[2] + '"' : '') + ' href="#' + x[0] + '-' + enc(p.id) + '">' + x[1] + '</a>';
+    }).join('') + '</nav>';
   }
   function aTabsHTML(ts, cur) {
     return '<div class="atabs" role="tablist" aria-label="분석 보기" style="grid-template-columns:repeat(' + Math.max(ts.length, 1) + ',minmax(0,1fr))">' +
@@ -776,6 +792,76 @@ var Review = (function () {
     }
   }
 
+  /* ---------- The Concise(0.7.0 · 261018 기원T 「글로 싣기(이름은 The Concise) · 겹치는 내용 빼지 말고 그대로 넣기」) ----------
+     종이 콘사이스 한 면(_도구\콘사이스\빌드.js)과 같은 차례로 싣는다 — 제목 · TOPIC · 주제 · 구조 · 한 줄 → 핵심 어휘 → 핵심 어법 →
+     핵심 문장 → 출제 예상 자리(객관식 · 서답형). 글은 판 지문의 「콘사이스」 칸(_도구\폰복습\콘사이스칸.py — 확정 json 의 학생 칸 그대로)이다.
+     단어 탭 · 지문 분석과 겹치는 글도 그대로 둔다.
+     · 체크 칸이 없다 — 진도 번호(key)가 그대로다
+     · 「콘사이스」 칸이 없는 판 · 지문에서는 전환 칸이 안 서고 #c- 주소도 첫 화면으로 간다 */
+  function cOf(p) {
+    var c = p && p['콘사이스'];
+    return c && typeof c === 'object' && ((c.vocab || []).length || (c.sentences || []).length || c.topicKo) ? c : null;
+  }
+  function hasC(p) { return !!cOf(p); }
+  function cObjs(x) { return Array.isArray(x) ? x.filter(function (v) { return v && typeof v === 'object'; }) : []; }
+  function cStrs(x) { return Array.isArray(x) ? x.filter(function (v) { return typeof v === 'string' && v; }) : []; }
+  /* 핵심 문장 따옴표 — 문장이 따옴표로 열리거나 닫히면 겹치지 않게 안 씌운다(빌드.js 문장따옴표와 같다) */
+  function cQuote(t) { t = String(t || '').trim(); return /^["“]|["”]$/.test(t) ? t : '“' + t + '”'; }
+  /* 어법 인용 도막 잇기 — 앞 · 핵심 · 뒤 사이를 띄우되 문장부호 앞뒤는 안 띄운다(빌드.js 이음공백과 같다) */
+  function cGap(a, b) { return !a || !b || /^\s|^[,.;:!?)\]}»”’…]/.test(b) || /\s$|[([{«“‘\-—]$/.test(a) ? '' : ' '; }
+  function cSec(title, body, cls) { return '<section class="acard ccard' + (cls ? ' ' + cls : '') + '"><h3 class="ah cc-h">' + title + '</h3>' + body + '</section>'; }
+  function cBody(c) {
+    var h = '', meta = [['TOPIC', c.topicEn, 'en'], ['주제', c.topicKo, ''], ['구조', c.structure, ''], ['한 줄', c.oneLiner, '']].filter(function (r) { return r[1]; });
+    if (c.titleEn || c.titleKo || meta.length) h += '<section class="acard ccard chead">' +
+      (c.titleEn ? '<p class="en cc-te">' + esc(c.titleEn) + '</p>' : '') + (c.titleKo ? '<p class="cc-tk">' + esc(c.titleKo) + '</p>' : '') +
+      (meta.length ? '<dl class="cc-meta">' + meta.map(function (r) {
+        return '<div><dt>' + r[0] + '</dt><dd' + (r[2] ? ' class="' + r[2] + '"' : '') + '>' + esc(r[1]) + '</dd></div>';
+      }).join('') + '</dl>' : '') + '</section>';
+    var vs = cObjs(c.vocab);
+    if (vs.length) h += cSec('핵심 어휘', '<ul class="cc-voc">' + vs.map(function (v) {
+      var rel = v.related ? String(v.related) : '';
+      return '<li><p class="cv-h"><b class="en">' + esc(v.en) + '</b>' + (v.pos ? '<i class="cv-pos">' + esc(v.pos) + '</i>' : '') +
+        (v.ko ? '<span class="cv-ko">' + esc(v.ko) + '</span>' : '') + '</p>' +
+        (rel ? '<p class="cv-rel"><span class="cv-c">' + esc(v.connector || '↔') + '</span> <span' + (/[가-힣]/.test(rel) ? '' : ' class="en"') + '>' + esc(rel) + '</span></p>' : '') +
+        (v.note ? '<p class="cv-note">' + esc(v.note) + '</p>' : '') + sayBtn(esc(v.en)) + '</li>';
+    }).join('') + '</ul>');
+    var gs = cObjs(c.grammar);
+    if (gs.length) h += cSec('핵심 어법', '<ul class="cc-gram">' + gs.map(function (g) {
+      var a = g.quoteBefore || '', b = g.quoteBold || '', z = g.quoteAfter || '';
+      return '<li><p class="cg-t">' + esc(g.title) + '</p>' +
+        (a || b || z ? '<p class="en cg-q">' + esc(a) + cGap(a, b) + (b ? '<b>' + esc(b) + '</b>' : '') + cGap(b || a, z) + esc(z) + '</p>' : '') +
+        (g.trap ? '<p class="cg-trap">' + esc(g.trap) + '</p>' : '') + '</li>';
+    }).join('') + '</ul>');
+    var ss = cObjs(c.sentences);
+    if (ss.length) h += cSec('핵심 문장', ss.map(function (s) {
+      return '<article class="cc-sent">' + (s.slot ? '<span class="cs-slot">' + esc(s.slot) + '</span>' : '') +
+        '<p class="en cs-en">' + esc(cQuote(s.en)) + '</p>' + sayBtn(esc(s.en)) +
+        (s.ko ? '<p class="cs-ko">' + esc(s.ko) + '</p>' : '') + (s.why ? '<p class="cs-why">' + esc(s.why) + '</p>' : '') +
+        (s.where ? '<p class="cs-where">' + esc(s.where) + '</p>' : '') + '</article>';
+    }).join(''));
+    var mc = cStrs(c.expectationsMc), sa = cStrs(c.expectationsSa), ex = cStrs(c.expectations);
+    function ul(list) { return '<ul class="cc-exp">' + list.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>'; }
+    var eb = mc.length || sa.length ? (mc.length ? '<p class="cc-sub">객관식</p>' + ul(mc) : '') + (sa.length ? '<p class="cc-sub">서답형</p>' + ul(sa) : '') : ex.length ? ul(ex) : '';
+    if (eb) h += cSec('출제 예상 자리', eb);
+    return h;
+  }
+  function conciseHTML(id) {
+    var p = C.byId[id];
+    var list = C.P.filter(hasC), i = list.indexOf(p), prev = list[i - 1], next = list[i + 1];
+    var h = '<div class="pbar"><a class="back" href="#jimun">‹ 목록</a><span class="t">' + esc(pLabel(p)) + ' · The Concise</span><span class="nv">' +
+      (prev ? '<a href="#c-' + enc(prev.id) + '" aria-label="이전 지문 The Concise">‹</a>' : '<span aria-hidden="true">‹</span>') +
+      (next ? '<a href="#c-' + enc(next.id) + '" aria-label="다음 지문 The Concise">›</a>' : '<span aria-hidden="true">›</span>') + '</span></div>';
+    h += '<header class="phead"><p class="eyebrow">The Concise · ' + esc(pLabel(p)) + '</p><h2>' + esc(p['제목']) + '</h2>' +
+      (p['영제목'] ? '<p class="en-t">' + esc(p['영제목']) + '</p>' : '') + '</header>';
+    h += pSwitch(p, 'c');
+    h += '<div id="cbody">' + cBody(cOf(p)) + '</div>';
+    h += '<a class="anext" href="#p-' + enc(p.id) + '">‹ 지문으로 돌아가기</a>';
+    h += repBtn(p.key, 'The Concise · ' + pLabel(p) + ' — ' + (p['제목'] || ''));
+    h += '<nav class="pn">' + (prev ? '<a href="#c-' + enc(prev.id) + '"><span class="k">‹ 이전 지문</span><span class="t">' + esc(prev['제목']) + '</span></a>' : '<span></span>') +
+      (next ? '<a class="nx" href="#c-' + enc(next.id) + '"><span class="k">다음 지문 ›</span><span class="t">' + esc(next['제목']) + '</span></a>' : '<span></span>') + '</nav>';
+    return h;
+  }
+
   /* ---------- 그리기 ---------- */
   function renderTab(tab) {
     U().tab = tab;
@@ -784,6 +870,7 @@ var Review = (function () {
   }
   function renderPassage(id) { return passageHTML(id) + tailHTML(); }
   function renderAnalysis(id) { return analysisHTML(id) + tailHTML(); }
+  function renderConcise(id) { return conciseHTML(id) + tailHTML(); }
   function refreshTabs() {
     var t = document.querySelector('.tabs');
     if (!t) return;
@@ -918,9 +1005,10 @@ var Review = (function () {
   return {
     setup: setup, ready: function () { return !!C; }, route: route, label: label, href: href,
     tabName: tabName, firstTab: firstTab, heroHTML: heroHTML, progress: progress,
-    renderTab: renderTab, renderPassage: renderPassage, renderAnalysis: renderAnalysis, refreshTabs: refreshTabs, click: click,
+    renderTab: renderTab, renderPassage: renderPassage, renderAnalysis: renderAnalysis, renderConcise: renderConcise, refreshTabs: refreshTabs, click: click,
     data: function () { return C ? C.D : null; },
     util: { esc: esc, safe: safe, enc: enc, plain: plain, underline: underline, blankify: blankify, segHTML: segHTML, gWords: gWords },
+    concise: { has: function (id) { return !!(C && C.byId[id] && hasC(C.byId[id])); } },
     analysis: { tabs: function (id) { return C && C.byId[id] ? aTabs(C.byId[id]).map(function (t) { return t.id; }) : []; }, body: function (id, tab) { return aBody(C.byId[id], tab); } }
   };
 })();

@@ -732,3 +732,58 @@ html.picv-on,html.picv-on body{overflow:hidden;overscroll-behavior:none}
 .picv-tip.gone{opacity:0}
 .picv-x{position:absolute;top:10px;right:10px;z-index:2;display:inline-flex;align-items:center;gap:6px;
   min-height:44px;padding:0 14px;border-radius:999px;background:rgba(20,20,20,.72);border:1px solid rgba(255,255,255,.28);color:#fff;font-size:15px;font-weight:800}
+
+/* ════════ 0.7.0 — The Concise(261018) ════════
+   지문 화면 전환 셋째 칸 「The Concise」(#c-<지문 id> · review.js conciseHTML). 종이 콘사이스 한 면의 차례 그대로 —
+   머리(제목 · TOPIC · 주제 · 구조 · 한 줄) → 핵심 어휘 → 핵심 어법 → 핵심 문장 → 출제 예상 자리. 카드 모양은 지문 분석(.acard)을 따른다. */
+.pswitch[data-n="3"]{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.pswitch[data-n="3"] a,.pswitch[data-n="3"] .ps-on{font-size:14.5px;letter-spacing:-.02em;padding:4px 4px}
+@media (max-width:359px){.pswitch[data-n="3"] a,.pswitch[data-n="3"] .ps-on{font-size:13.5px}}
+#cbody>.ccard:first-child{margin-top:16px}
+.cc-h{display:flex;align-items:center;gap:8px}
+.cc-h::before{content:"";flex:0 0 auto;width:4px;height:16px;border-radius:2px;background:var(--coral)}
+/* 머리 */
+.chead{border-top:4px solid var(--coral)}
+.cc-te{margin:0;font-size:19px;font-weight:600;line-height:1.4;text-wrap:balance}
+.cc-tk{margin:4px 0 0;font-size:14.5px;color:var(--ink2);line-height:1.5}
+.cc-meta{margin:12px 0 0;padding-top:12px;border-top:1.5px dashed var(--line2);display:grid;gap:8px}
+.cc-meta div{display:grid;grid-template-columns:3.6em minmax(0,1fr);gap:8px;align-items:baseline}
+.cc-meta dt{font-size:12px;font-weight:900;color:var(--coral-ink);letter-spacing:.02em}
+.cc-meta dd{margin:0;min-width:0;font-size:15px;line-height:1.6}
+.cc-meta dd.en{font-size:15.5px}
+/* 핵심 어휘 */
+.cc-voc{list-style:none;margin:0;padding:0}
+.cc-voc li{padding:11px 0;border-top:1px solid var(--line)}
+.cc-voc li:first-child{padding-top:2px;border-top:0}
+.cc-voc li:last-child{padding-bottom:0}
+.cv-h{margin:0;display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px}
+.cv-h b.en{font-size:17.5px;font-weight:600;color:var(--coral-ink)}
+.cv-pos{font-style:normal;font-size:12px;font-weight:800;color:var(--muted)}
+.cv-ko{font-size:15px;line-height:1.5}
+.cv-rel{margin:5px 0 0;font-size:14px;line-height:1.55;color:var(--ink2)}
+.cv-rel .en{font-size:15px}
+.cv-c{font-weight:900;color:var(--teal-ink)}
+.cv-note{margin:4px 0 0;font-size:13.5px;line-height:1.55;color:var(--muted)}
+.cc-voc .say{margin-top:8px}
+/* 핵심 어법 */
+.cc-gram{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.cc-gram li{padding:10px 12px;border-radius:14px;background:var(--amber-wash)}
+.cg-t{margin:0;font-size:15px;font-weight:800;line-height:1.5}
+.cg-q{margin:6px 0 0;font-size:16px;line-height:1.7}
+.cg-q b{font-weight:700;background:linear-gradient(transparent 58%,var(--hl) 58%)}
+.cg-trap{margin:6px 0 0;padding-left:10px;border-left:3px solid var(--amber);font-size:14px;line-height:1.6;color:var(--ink2)}
+/* 핵심 문장 */
+.cc-sent{padding:11px 12px;border-left:3px solid var(--coral);border-radius:0 14px 14px 0;background:var(--sunk)}
+.cc-sent+.cc-sent{margin-top:10px}
+.cs-slot{display:inline-block;margin-bottom:6px;padding:2px 9px;border-radius:8px;background:var(--coral-wash);color:var(--coral-ink);font-size:12.5px;font-weight:800;line-height:1.4}
+.cs-en{margin:0;font-size:16.5px;font-weight:500}
+.cc-sent .say{margin-top:8px}
+.cs-ko{margin:8px 0 0;font-size:14.5px;line-height:1.65;color:var(--ink2)}
+.cs-why{margin:8px 0 0;font-size:14.5px;line-height:1.6}
+.cs-where{margin:4px 0 0;font-size:13px;line-height:1.55;color:var(--muted)}
+/* 출제 예상 자리 */
+.cc-sub{margin:0 0 4px;font-size:12.5px;font-weight:900;color:var(--coral-ink)}
+.cc-exp+.cc-sub{margin-top:12px;padding-top:12px;border-top:1.5px dashed var(--line2)}
+.cc-exp{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.cc-exp li{position:relative;padding-left:16px;font-size:14.5px;line-height:1.6}
+.cc-exp li::before{content:"›";position:absolute;left:2px;top:0;font-weight:900;color:var(--coral)}
