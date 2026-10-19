@@ -241,23 +241,20 @@ var Review = (function () {
     var D = C.D, dbox = '', d = dday();
     if (d !== null) {
       var dtxt = d > 0 ? 'D-' + d : (d === 0 ? 'D-DAY' : '끝');
-      dbox = '<div class="dbox"><span class="l">' + 시험이름() + '</span><span class="n">' + dtxt + '</span><span class="d">' + 날짜말(D['시험일']) + '</span></div>';
+      /* 0.10.0 시험이 지났으면 past — 「중간고사까지」의 「까지」를 안 붙인다(CSS) */
+      dbox = '<div class="dbox' + (d < 0 ? ' past' : '') + '"><span class="l">' + 시험이름() + '</span><span class="n">' + dtxt + '</span><span class="d">' + 날짜말(D['시험일']) + '</span></div>';
     }
     var y = 해();
     var 제목 = String(D['제목'] || '').replace(/폰\s*복습/g, '복습');   // 폰복습 데이터의 「영어 폰 복습」 — 앱에서는 「영어 복습」
-    /* 머리 카드 아래 전체 진도 — 다섯 갈래 진도를 더한 것(첫 화면 진도 카드와 같은 셈) */
-    var 합 = 0, 전체 = 0;
-    progress().forEach(function (x) { 합 += x.n; 전체 += x.N; });
-    /* 0.9.0 오늘 · 이번 주 — 사실 숫자만(연속 기록 · 순위는 두지 않는다 · 261019 기원T). 0 인 것은 안 적는다 */
+    /* 0.9.0 오늘 · 이번 주 — 사실 숫자만(연속 기록 · 순위는 두지 않는다 · 261019 기원T). 0 인 것은 안 적는다.
+       0.10.0 전체 진도 막대는 첫 화면 「진도」 머리(전체 수)와 노선으로 옮겨 머리 카드에는 이 한 줄만 둔다 */
     var s = doneStats(), mins = C.env.studyMin ? C.env.studyMin() : 0, 오늘 = [];
     if (s.today) 오늘.push('오늘 ' + s.today + '개 체크');
     if (mins) 오늘.push('오늘 ' + mins + '분');
     if (s.week) 오늘.push('이번 주 ' + s.week + '일 공부');
-    var 진도 = 전체 ? '<div class="hero-prog"><div class="hp-row"><span>전체 진도</span><span>' + 합 + ' / ' + 전체 + '</span></div>' +
-      '<span class="hp-bar" aria-hidden="true"><i style="width:' + Math.round(합 * 100 / 전체) + '%"></i></span>' +
-      (오늘.length ? '<p class="hp-today">' + 오늘.join(' · ') + '</p>' : '') + '</div>' : '';
+    var 진도 = 오늘.length ? '<div class="hero-prog"><p class="hp-today">' + 오늘.join(' · ') + '</p></div>' : '';
     return '<header class="hero">' +
-      '<div class="hero-card"><div class="hero-main"><h1><small>' + (y ? y + ' · ' : '') + esc(D['학교표시']) + '</small>' + safe(제목) + '</h1>' + dbox + '</div>' +
+      '<div class="hero-card"><div class="hero-main' + (dbox ? '' : ' nod') + '"><h1><small>' + (y ? y + ' · ' : '') + esc(D['학교표시']) + '</small><span class="ht">' + safe(제목) + '</span></h1>' + dbox + '</div>' +
       진도 + '</div>' +
       '</header>';
   }
@@ -298,13 +295,15 @@ var Review = (function () {
       (re ? ' 다시 볼 것이 <b>' + re + '개</b> 남아 있어요.' : '') + '</p></section>';
   }
 
+  var 탭글자 = { jimun: '지', haeksim: '핵', seosul: '서', eobeop: '어', dan: '단' };
   function tabsHTML(cur) {
     return '<div id="tabs-anchor"></div><nav class="tabs" role="tablist" aria-label="복습 종류" style="grid-template-columns:repeat(' + Math.max(C.TABS.length, 1) + ',minmax(0,1fr))">' +
       C.TABS.map(function (t) {
         /* 탭 다섯 칸은 폭이 같아 「Top Tier 서술형」이 한 줄에 안 든다 — 「Top Tier」를 작은 글씨로 위에 얹는다 */
         var nm = t.id === 'seosul' && C.TT ? '<b class="tt">Top Tier</b><span>서술형</span>' : '<span>' + t.name + '</span>';
+        /* 0.10.0 어두운 화면 「노선도」는 탭마다 노선 배지 글자(밝은 화면은 CSS 가 감춘다) */
         return '<a class="tab" role="tab" href="#' + t.id + '" aria-selected="' + (t.id === cur) + '"' +
-          (t.id === 'seosul' && C.TT ? ' aria-label="' + t.name + '"' : '') + '>' + nm + '<i>' + tabCount(t.id) + '</i></a>';
+          (t.id === 'seosul' && C.TT ? ' aria-label="' + t.name + '"' : '') + '><b class="tk" aria-hidden="true">' + (탭글자[t.id] || '') + '</b>' + nm + '<i>' + tabCount(t.id) + '</i></a>';
       }).join('') + '</nav>';
   }
   function chipVal(key, items) {
@@ -564,7 +563,15 @@ var Review = (function () {
       if (d2w && v['학교정의']) h += '<span class="from">학교가 준 영영정의예요</span>';
       h += '<span class="from">' + esc(vSrc(v)) + '</span></span>';
     }
-    h += '</button></div>';
+    h += '</button>';
+    /* 0.10.0 어두운 화면 「노선도」 — 역 이름판처럼 앞뒤 낱말(밝은 화면은 CSS 가 감춘다).
+       「영영정의 → 낱말」에서는 앞뒤 낱말이 다른 카드의 답이라 안 싣는다 */
+    if (!d2w) {
+      var 앞 = L[deck.i - 1], 뒤 = L[deck.i + 1];
+      h += '<div class="flash-nb" aria-hidden="true"><span class="nb-p">' + (앞 ? '‹ <i>' + deck.i + '</i> ' + esc(앞.en) : '') + '</span>' +
+        '<span class="nb-n">' + (뒤 ? '<i>' + (deck.i + 2) + '</i> ' + esc(뒤.en) + ' ›' : '') + '</span></div>';
+    }
+    h += '</div>';
     h += '<div class="judge big"><button data-act="dj" data-v="re">몰라요</button><button data-act="dj" data-v="ok">알아요</button></div>';
     h += repBtn(v.key, '단어 · ' + v.en);
     return h;

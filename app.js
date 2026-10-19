@@ -61,13 +61,13 @@
 
   /* ---------- 어두운 화면 · 밝은 화면(0.3.0) ----------
      어두운 화면이 기본이다(보카꾹과 같다). 밝은 화면을 고르면 이 폰에 남고 index.html 첫 스크립트가 첫 그림 전에 읽는다 —
-     저장 이름(upgrade-theme)과 머리 색(#FFFDF6 · #0F1218)은 그 스크립트와 같아야 한다. 저장소가 막힌 브라우저는 이 화면에서만 바뀐다 */
+     저장 이름(upgrade-theme)과 머리 색(#FFFDFC · #0F141D · 0.10.0)은 그 스크립트와 같아야 한다. 저장소가 막힌 브라우저는 이 화면에서만 바뀐다 */
   function theme() { return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark'; }
   function setTheme(t) {
     t = t === 'light' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', t);
     var m = document.querySelector('meta[name="theme-color"]'), c = document.querySelector('meta[name="color-scheme"]');
-    if (m) m.content = t === 'light' ? '#FFFDF6' : '#0F1218';
+    if (m) m.content = t === 'light' ? '#FFFDFC' : '#0F141D';   // 0.10.0 밝은 화면 「답안지」 종이 · 어두운 화면 「노선도」 밤 남색
     if (c) c.content = t;
     try { if (t === 'light') localStorage.setItem('upgrade-theme', 'light'); else localStorage.removeItem('upgrade-theme'); } catch (e) { /* 이 화면에서만 */ }
   }
@@ -479,21 +479,35 @@
 
   /* ---------- 첫 화면 ---------- */
   function notice(title, text) { return '<div class="notice"><b>' + esc(title) + '</b>' + (text ? '<p>' + esc(text) + '</p>' : '') + '</div>'; }
+  /* 0.10.0 진도는 노선 — 줄마다 점 여섯(0 · 20 · … · 100%)과 지금 위치 큰 점. 머리에 다섯 갈래를 더한 전체 수 */
+  var 탭글자 = { jimun: '지', haeksim: '핵', seosul: '서', eobeop: '어', dan: '단' };
   function progressHTML() {
-    return '<section class="prog" aria-label="탭별 진도"><h2 class="sec-h">진도</h2><div class="prog-grid">' + Review.progress().map(function (x) {
+    var list = Review.progress(), 합 = 0, 전체 = 0;
+    list.forEach(function (x) { 합 += x.n; 전체 += x.N; });
+    return '<section class="prog" aria-label="탭별 진도"><div class="prog-h"><h2 class="sec-h">진도</h2>' +
+      (전체 ? '<span class="prog-t"><b>' + 합 + '</b> / ' + 전체 + '</span>' : '') + '</div><div class="prog-grid">' + list.map(function (x) {
       var pct = x.N ? Math.round(x.n * 100 / x.N) : 0;
+      var dots = [0, 20, 40, 60, 80, 100].map(function (p) { return '<i class="pl-dot' + (p <= pct && x.n ? ' on' : '') + '" style="left:' + p + '%"></i>'; }).join('');
       return '<a class="pcard" href="#' + x.id + '" data-tab="' + x.id + '" data-n="' + x.n + '" data-total="' + x.N + '" data-re="' + x.re + '">' +
-        '<span class="pc-k">' + x.name + '</span><span class="pc-n"><b>' + x.n + '</b> / ' + x.N + '</span>' +
-        '<span class="pc-l">' + x.what + (x.re ? ' · 다시 볼 것 ' + x.re : '') + '</span>' +
-        '<span class="meter" aria-hidden="true"><i style="width:' + pct + '%"></i></span></a>';
-    }).join('') + '</div></section>';
+        '<b class="tk" aria-hidden="true">' + (탭글자[x.id] || '') + '</b><span class="pc-k">' + x.name + '</span>' +
+        '<span class="pc-line" aria-hidden="true"><i class="pl-base"></i><i class="pl-fill" style="width:' + pct + '%"></i>' + dots +
+        '<i class="pl-cur" style="left:' + pct + '%"></i></span>' +
+        '<span class="pc-n"><b>' + x.n + '</b>/' + x.N + '</span>' +
+        '<span class="pc-l">' + x.what + (x.re ? ' · 다시 볼 것 ' + x.re : '') + '</span></a>';
+    }).join('') + '</div><p class="prog-cap">큰 점이 지금 위치예요. 줄을 누르면 그 자료로 가요.</p></section>';
+  }
+  /* 이어서 보기 — 0.10.0 어두운 화면은 갈 곳의 탭 글자 · 탭 색(지문 · 분석 · The Concise · 출제 예상은 「지」) */
+  var 화살표 = '<svg class="ar" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>';
+  function contA(href, tab, ck, ct) {
+    return '<a class="cont" href="#' + href + '" data-tab="' + tab + '"><b class="tk" aria-hidden="true">' + (탭글자[tab] || '지') + '</b>' +
+      '<span class="cw"><span class="ck">' + ck + '</span><span class="ct">' + esc(ct) + '</span></span>' + 화살표 + '</a>';
   }
   function continueHTML() {
     var last = !A.preview && A.ui.last ? A.ui.last[subjKey()] : '';
     var lab = last ? Review.label(last) : '';
-    if (lab) return '<a class="cont" href="#' + Review.href(last) + '"><span class="ck">이어서 보기</span><span class="ct">' + esc(lab) + '</span></a>';
+    if (lab) return contA(Review.href(last), 탭글자[last] ? last : 'jimun', '이어서 보기', lab);
     var first = Review.firstTab();
-    return first ? '<a class="cont" href="#' + first + '"><span class="ck">처음부터 보기</span><span class="ct">' + esc(Review.tabName(first)) + '</span></a>' : '';
+    return first ? contA(first, first, '처음부터 보기', Review.tabName(first)) : '';
   }
   function homeHTML() {
     if (!A.preview) {
@@ -701,6 +715,7 @@
       if (h !== 'signup') h = 'login';
       if (location.hash !== '#' + h) history.replaceState(null, '', '#' + h);
       $app.innerHTML = h === 'signup' ? signupHTML() : loginHTML();
+      document.body.setAttribute('data-view', h);
       setWm();
       if (fromHash) window.scrollTo(0, 0);
       A.prevRoute = { view: h };
@@ -728,6 +743,8 @@
       }
     }
     $app.innerHTML = topHTML(!!r && (r.view === 'a' || r.view === 'c' || r.view === 'y')) + body;   // 0.9.0 분석 · The Concise · 출제 예상은 과목 줄 없이(본문이 빨리 오게)
+    /* 0.10.0 지금 화면 — CSS 가 탭 색(어두운 화면 노선 색) · 답안지 표식(밝은 화면)을 이 값으로 고른다 */
+    document.body.setAttribute('data-view', r ? (r.view === 't' ? 't-' + r.tab : r.view) : (h.indexOf('admin') === 0 ? 'admin' : h));
     setWm();
     if (typeof Pics !== 'undefined') Pics.fill($app);      // 그림 풀이(0.5.0) — 그린 뒤 그림을 채운다(캐시 → 서버)
     if (fromHash) {
