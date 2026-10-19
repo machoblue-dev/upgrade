@@ -253,9 +253,11 @@ var Review = (function () {
     if (mins) 오늘.push('오늘 ' + mins + '분');
     if (s.week) 오늘.push('이번 주 ' + s.week + '일 공부');
     var 진도 = 오늘.length ? '<div class="hero-prog"><p class="hp-today">' + 오늘.join(' · ') + '</p></div>' : '';
+    /* 0.11.0 제목은 판 밖 위에, 남은 날 · 오늘 숫자는 돋은 판(.hero-box) 하나에 담는다 — 둘 다 없으면 판을 안 세운다 */
+    var 판 = dbox || 진도 ? '<div class="hero-box">' + dbox + 진도 + '</div>' : '';
     return '<header class="hero">' +
-      '<div class="hero-card"><div class="hero-main' + (dbox ? '' : ' nod') + '"><h1><small>' + (y ? y + ' · ' : '') + esc(D['학교표시']) + '</small><span class="ht">' + safe(제목) + '</span></h1>' + dbox + '</div>' +
-      진도 + '</div>' +
+      '<div class="hero-card"><div class="hero-main' + (dbox ? '' : ' nod') + '"><h1><small>' + (y ? y + ' · ' : '') + esc(D['학교표시']) + '</small><span class="ht">' + safe(제목) + '</span></h1></div>' +
+      판 + '</div>' +
       '</header>';
   }
   /* 시험 한눈에 — 0.9.0 머리 카드에서 떼어 첫 화면 아래쪽으로 내리고 접는다. 이 회차에서 처음 볼 때만 펼쳐 둔다

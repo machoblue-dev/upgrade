@@ -61,13 +61,13 @@
 
   /* ---------- 어두운 화면 · 밝은 화면(0.3.0) ----------
      어두운 화면이 기본이다(보카꾹과 같다). 밝은 화면을 고르면 이 폰에 남고 index.html 첫 스크립트가 첫 그림 전에 읽는다 —
-     저장 이름(upgrade-theme)과 머리 색(#FFFDFC · #0F141D · 0.10.0)은 그 스크립트와 같아야 한다. 저장소가 막힌 브라우저는 이 화면에서만 바뀐다 */
+     저장 이름(upgrade-theme)과 머리 색(#EFEFF3 · #0A0A0C · 0.11.0)은 그 스크립트와 같아야 한다. 저장소가 막힌 브라우저는 이 화면에서만 바뀐다 */
   function theme() { return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark'; }
   function setTheme(t) {
     t = t === 'light' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', t);
     var m = document.querySelector('meta[name="theme-color"]'), c = document.querySelector('meta[name="color-scheme"]');
-    if (m) m.content = t === 'light' ? '#FFFDFC' : '#0F141D';   // 0.10.0 밝은 화면 「답안지」 종이 · 어두운 화면 「노선도」 밤 남색
+    if (m) m.content = t === 'light' ? '#EFEFF3' : '#0A0A0C';   // 0.11.0 클래식 모노 — 밝은 화면 옅은 회색 바탕 · 어두운 화면 밤 검정
     if (c) c.content = t;
     try { if (t === 'light') localStorage.setItem('upgrade-theme', 'light'); else localStorage.removeItem('upgrade-theme'); } catch (e) { /* 이 화면에서만 */ }
   }
@@ -494,13 +494,13 @@
         '<i class="pl-cur" style="left:' + pct + '%"></i></span>' +
         '<span class="pc-n"><b>' + x.n + '</b>/' + x.N + '</span>' +
         '<span class="pc-l">' + x.what + (x.re ? ' · 다시 볼 것 ' + x.re : '') + '</span></a>';
-    }).join('') + '</div><p class="prog-cap">큰 점이 지금 위치예요. 줄을 누르면 그 자료로 가요.</p></section>';
+    }).join('') + '</div><p class="prog-cap">줄을 누르면 그 자료로 가요.</p></section>';
   }
   /* 이어서 보기 — 0.10.0 어두운 화면은 갈 곳의 탭 글자 · 탭 색(지문 · 분석 · The Concise · 출제 예상은 「지」) */
   var 화살표 = '<svg class="ar" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>';
   function contA(href, tab, ck, ct) {
     return '<a class="cont" href="#' + href + '" data-tab="' + tab + '"><b class="tk" aria-hidden="true">' + (탭글자[tab] || '지') + '</b>' +
-      '<span class="cw"><span class="ck">' + ck + '</span><span class="ct">' + esc(ct) + '</span></span>' + 화살표 + '</a>';
+      '<span class="cw"><span class="ck">' + ck + '</span><span class="ct">' + esc(ct) + '</span></span><span class="arw">' + 화살표 + '</span></a>';
   }
   function continueHTML() {
     var last = !A.preview && A.ui.last ? A.ui.last[subjKey()] : '';
