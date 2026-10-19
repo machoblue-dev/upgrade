@@ -7,7 +7,9 @@
    · 떠날 때(visibilitychange hidden): 모아 둔 체크를 보낸다
    · 카톡 안 브라우저 띠 · 끊김 띠 · 미리보기 띠 · 맨 아래 옅은 「○○○ 학생용」
    · 0.3.0(보카꾹에서 가져온 것) — 어두운 화면 기본 · 밝은 화면 스위치 · 홈 화면에 아이콘 저장(설치 창 · 안내 창 · 첫 화면 카드 · sw.js) ·
-     카톡 띠의 「다른 브라우저로 열기」 · 내 정보 「지금 보내기」 · 영어 발음 듣기(단어 카드 · 핵심 문장 · 지문 문장) */
+     카톡 띠의 「다른 브라우저로 열기」 · 내 정보 「지금 보내기」 · 영어 발음 듣기(단어 카드 · 핵심 문장 · 지문 문장)
+   · 0.9.0 첫 화면 차례 — 머리 카드 → 시험 직전 · 시험 끝 칸 → 다음 할 일(이어서 보기 · 탭마다 다시 볼 것) → 진도 → 시험 한눈에(접힘) → 아이콘 저장 카드 ·
+     분석 · The Concise · 출제 예상 화면에서는 과목 줄을 안 세운다 · 오늘 공부한 분을 이 폰에 날마다 쌓는다(머리 카드) */
 (function () {
   'use strict';
   var $app = document.getElementById('app');
@@ -199,10 +201,10 @@
   }
 
   /* ---------- 머리(로그인 뒤) ---------- */
-  function topHTML() {
+  function topHTML(noSubj) {
     return '<header class="topbar"><a class="brand" href="#home" aria-label="처음 화면"><span class="bt">UP</span><span class="c">:</span><span class="bg">GRADE</span></a><span class="sp"></span>' +
       (isAdmin() ? '<a class="tb" href="#admin">관리</a>' : '') +
-      '<a class="tb" href="#me">내 정보</a></header>' + subjHTML();
+      '<a class="tb" href="#me">내 정보</a></header>' + (noSubj ? '' : subjHTML());
   }
   function subjHTML() {
     if (A.preview || A.subjects.length < 2) return '';
@@ -445,15 +447,17 @@
       Review.setup(pv.data, {
         mark: function (k) { return pv.marks[k] || ''; },
         setMarks: function (pairs) { pairs.forEach(function (x) { if (x[1] === 'none') delete pv.marks[x[0]]; else pv.marks[x[0]] = x[1]; }); },
-        ui: pv.ui, saveUi: noop, readonly: false, report: null, cycle: pv.meta.cycle
+        ui: pv.ui, saveUi: noop, readonly: false, report: null, cycle: pv.meta.cycle, toast: toast
       });
       return;
     }
     if (!A.pack) { Review.setup(null, null); return; }
+    /* 0.9.0 marks — 누른 시각이 든 진도 사본(오늘 · 이번 주 · 다시 볼 차례를 센다) · toast — 누른 뒤 한 줄 알림 · studyMin — 오늘 공부한 분 */
     Review.setup(A.pack.data, {
       mark: Sync.get,
       setMarks: function (pairs) { Sync.setMany(pairs).catch(noop); },
-      ui: A.ui, saveUi: saveUi, readonly: false, report: openReport, cycle: A.pack.cycle
+      ui: A.ui, saveUi: saveUi, readonly: false, report: openReport, cycle: A.pack.cycle,
+      marks: Sync.marks, toast: toast, studyMin: todayMin
     });
   }
   function clearReview() { reviewFor = ''; Review.setup(null, null); }
@@ -509,7 +513,19 @@
     if (A.banner && !A.preview) {
       out += '<div class="newbar" role="status"><p><b>새 내용이 있어요</b>선생님이 자료를 새로 올렸어요.</p><button data-act="banner-ok">확인</button></div>';
     }
-    return out + instCardHTML() + Review.heroHTML() + progressHTML() + continueHTML() + sigHTML();
+    /* 0.9.0 — 할 일이 첫 화면 위쪽에 오게 차례를 바꿨다(시험 한눈에 · 아이콘 저장 카드는 아래로) */
+    return out + Review.heroHTML() + Review.cramHTML() + Review.endHTML() + todoHTML() + progressHTML() + Review.glanceHTML() + instCardHTML() + sigHTML();
+  }
+  /* 다음 할 일(0.9.0) — 이어서 보기 + 탭마다 다시 볼 것. 「다시」로 고른 지 하루가 지난 것은 「오늘 볼 차례」로 센다.
+     다시 볼 것 줄은 그 탭의 「다시 볼 것」 칩을 골라 둔 채로 연다(data-chip — review.js 칩 누르기와 같은 길로 고른 뒤 주소로 간다) */
+  function todoHTML() {
+    var rows = Review.progress().filter(function (x) { return x.re > 0; }).map(function (x) {
+      return '<a class="todo-re' + (x.due ? ' due' : '') + '" href="#' + x.id + '" data-chip="' + x.id + '" data-val="re" data-tab="' + x.id + '">' +
+        '<span class="tr-k">' + esc(x.name) + '</span><span class="tr-n">다시 볼 것 <b>' + x.re + '</b>개</span>' +
+        (x.due ? '<span class="tr-d">오늘 볼 차례 ' + x.due + '개</span>' : '') + '</a>';
+    });
+    return '<section class="todo" aria-label="다음 할 일"><h2 class="sec-h">다음 할 일</h2>' + continueHTML() +
+      (rows.length ? '<div class="todo-res">' + rows.join('') + '</div>' : '') + '</section>';
   }
   /* 첫 화면 맨 아래 학원 로고 — 0.3.3 에 머리 카드 위에서 옮겼다 */
   function sigHTML() {
@@ -675,7 +691,7 @@
   }
 
   /* ---------- 그리기 ---------- */
-  function reviewRoute(h) { return Review.ready() && (TABS[h] || h.indexOf('p-') === 0 || h.indexOf('a-') === 0 || h.indexOf('c-') === 0) ? Review.route(h) : null; }   // a- 지문 분석 보기(0.4.0) · c- The Concise(0.7.0)
+  function reviewRoute(h) { return Review.ready() && (TABS[h] || h === 'yesang' || h.indexOf('p-') === 0 || h.indexOf('a-') === 0 || h.indexOf('c-') === 0) ? Review.route(h) : null; }   // a- 지문 분석 보기(0.4.0) · c- The Concise(0.7.0) · yesang 출제 예상(0.9.0)
 
   function render(fromHash) {
     A.dirty = false;
@@ -693,6 +709,7 @@
     if (h === '' || h === 'login' || h === 'signup') { h = 'home'; history.replaceState(null, '', '#home'); }
     var r = null, body;
     if (A.prevRoute && A.prevRoute.view === 't') A.listScroll[A.prevRoute.tab] = window.scrollY;
+    if (h !== 'home' && A.prevRoute && A.prevRoute.view === 'home' && Review.ready()) Review.glanceSeen();   // 시험 한눈에 — 한 번 본 뒤로는 접어 둔다(0.9.0)
     if (h === 'me') body = meHTML();
     else if (h === 'admin' || h.indexOf('admin/') === 0) {
       if (isAdmin()) body = Admin.render(h);
@@ -705,11 +722,12 @@
         if (!A.loading) history.replaceState(null, '', '#home');
         body = homeHTML(); h = 'home';
       } else {
-        body = r.view === 'p' ? Review.renderPassage(r.id) : r.view === 'a' ? Review.renderAnalysis(r.id) : r.view === 'c' ? Review.renderConcise(r.id) : Review.renderTab(r.tab);
+        body = r.view === 'p' ? Review.renderPassage(r.id) : r.view === 'a' ? Review.renderAnalysis(r.id) : r.view === 'c' ? Review.renderConcise(r.id)
+          : r.view === 'y' ? Review.renderYesang() : Review.renderTab(r.tab);
         if (!A.preview) { A.ui.last[subjKey()] = h; saveUi(); }
       }
     }
-    $app.innerHTML = topHTML() + body;
+    $app.innerHTML = topHTML(!!r && (r.view === 'a' || r.view === 'c' || r.view === 'y')) + body;   // 0.9.0 분석 · The Concise · 출제 예상은 과목 줄 없이(본문이 빨리 오게)
     setWm();
     if (typeof Pics !== 'undefined') Pics.fill($app);      // 그림 풀이(0.5.0) — 그린 뒤 그림을 채운다(캐시 → 서버)
     if (fromHash) {
@@ -779,8 +797,19 @@
     study.tick = now;
     if (study.uid !== uid()) { study.sec = 0; study.uid = uid(); }   // 다른 계정의 초를 넘겨 보내지 않는다
     if ((!leaving && document.visibilityState !== 'visible') || !studyOn() || now - study.touched > STUDY_IDLE) return;
-    study.sec += Math.min(Math.max(gap, 0), STUDY_TICK * 2) / 1000;   // 폰이 잠들었다 깬 긴 틈은 세지 않는다
+    var add = Math.min(Math.max(gap, 0), STUDY_TICK * 2) / 1000;     // 폰이 잠들었다 깬 긴 틈은 세지 않는다
+    study.sec += add;
+    /* 0.9.0 오늘 공부한 분 — 같은 셈을 이 폰의 ui 에 날마다 쌓는다(서버는 합계만 둔다). 분이 바뀔 때만 적는다 */
+    if (A.ui) {
+      var td = ymd(now), t = A.ui.today;
+      if (!t || t.d !== td) t = A.ui.today = { d: td, s: 0 };
+      var m0 = Math.floor(t.s / 60);
+      t.s += add;
+      if (Math.floor(t.s / 60) !== m0) saveUi();
+    }
   }
+  function ymd(ms) { var d = new Date(ms); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
+  function todayMin() { var t = A.ui && A.ui.today; return t && t.d === ymd(Date.now()) ? Math.floor(t.s / 60) : 0; }
   function studySend(keepalive) {
     var n = Math.min(Math.floor(study.sec), 600);
     if (study.busy || study.off || n < (keepalive ? 5 : 60) || study.uid !== uid()) return;
@@ -841,7 +870,8 @@
     }
     if (act.indexOf('a-') === 0) { if (Admin.click(b)) ev.preventDefault(); return; }
     var res = Review.click(b);
-    if (res === 'render') softRender(true);
+    /* 칩을 고른 링크(첫 화면 「다시 볼 것」 줄 · 0.9.0)는 그 주소로 가면서 그린다 — 여기서 다시 그리면 누른 링크가 화면에서 빠진다 */
+    if (res === 'render' && !(b.tagName === 'A' && b.getAttribute('href'))) softRender(true);
   });
 
   document.addEventListener('submit', function (ev) {

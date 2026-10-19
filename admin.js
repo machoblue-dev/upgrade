@@ -276,7 +276,7 @@ var Admin = (function () {
       (admin ? '<span class="tagb">관리자</span>' : '') + (p.blocked ? '<span class="tagb block">막힘</span>' : '') +
       '<span class="seen' + (stale(p.last_seen) ? ' stale' : '') + '">' + (p.last_seen ? '마지막 접속 ' + esc(ago(p.last_seen)) : '한 번도 안 열었어요') + '</span></div>' +
       '<p class="smeta">' + esc(app.schoolLabel(p.school)) + ' · ' + esc(p.email || '') + ' · 가입 ' + esc(dateText(p.created_at)) +
-      (st && !admin ? ' · 학습시간 ' + esc(studyText(p.study_sec)) : '') + '</p>' +
+      (st && !admin ? ' · <span class="nw">학습시간 ' + esc(studyText(p.study_sec)) + '</span>' : '') + '</p>' +   // 0.9.0 숫자 사이에서 줄이 안 바뀌게
       (admin ? '<p class="hint">관리자 계정은 여기서 바꿀 수 없어요.</p>' :
         '<button class="link-btn" data-act="a-open" data-uid="' + esc(p.id) + '">' + (open ? '접기' : '고치기') + '</button>' + (open ? actsHTML(p) : '')) +
       '</article>';

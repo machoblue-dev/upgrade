@@ -22,7 +22,11 @@
      답 아래 「이것도 맞아요」 · 「깎이는 곳」 · 머리에 배점. 판 데이터는 _도구\폰복습\탑티어칸.py 가 만든다
      0.6.1 서술형이 다 Top Tier 문항인 판은 이름이 「Top Tier 서술형」 — 탭은 「Top Tier」를 작은 글씨로 위에 얹는다(C.TT)
    · 0.7.0 The Concise — 판 지문에 「콘사이스」 칸이 있으면 전환에 셋째 칸 「The Concise」가 서고 #c-<지문 id> 한 화면에 종이 콘사이스
-     한 면을 같은 차례로 싣는다(아래 절). 판 데이터는 _도구\폰복습\콘사이스칸.py 가 만든다 */
+     한 면을 같은 차례로 싣는다(아래 절). 판 데이터는 _도구\폰복습\콘사이스칸.py 가 만든다
+   · 0.9.0 두 목표(자주 들어오게 · 학습 효과 — 261019 기원T)에 맞춘 다듬기 — 「시험 한눈에」를 따로 떼어 접는다(glanceHTML) ·
+     머리 카드에 오늘 · 이번 주 숫자(진도 한 칸의 누른 시각으로 센다) · 다시 볼 것 칩을 「전체」 바로 뒤에 수와 함께 ·
+     판정 단추는 어느 탭이든 왼쪽 「다시」 · 오른쪽 「앎」 · 핵심 문장에도 「다시 볼래요」(state re) · 누른 뒤 한 줄 알림(묶음을 다 마침 · 다시 볼 것에서 뺌) ·
+     시험 직전(D-3 ~ D-DAY) 칸 · 시험 끝 칸 · 출제 예상 한 번에 보기(#yesang) · 지문 · 분석 · The Concise 머리의 겹친 작은 제목을 뺐다 */
 var Review = (function () {
   'use strict';
   var C = null;                                        // 지금 판 문맥 — setup() 이 만든다
@@ -153,12 +157,50 @@ var Review = (function () {
   }
   function 해() { var m = /^(\d{4})/.exec(C.D['시험일'] || C.env.cycle || ''); return m ? m[1] : ''; }
 
+  /* ---------- 0.9.0 오늘 · 이번 주 · 다시 볼 차례 ----------
+     진도 한 칸에 적힌 누른 시각(sync.js {s, t} — 서버 updated_at 과 같다)으로 센다. 판에 든 번호만 센다.
+     미리보기처럼 시각이 없는 진도는 0 으로 두고, 「다시」에 시각이 없으면 볼 차례로 본다 */
+  function marksMap() { var m = C.env.marks ? C.env.marks() : null; return m && typeof m === 'object' ? m : {}; }
+  function tOf(m) { var n = m && typeof m.t === 'string' ? Date.parse(m.t) : NaN; return isNaN(n) ? 0 : n; }
+  function dayAt(ms) { var d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); }
+  function weekAt(ms) { var d = new Date(dayAt(ms)); d.setDate(d.getDate() - (d.getDay() + 6) % 7); return d.getTime(); }   // 그 주 월요일
+  function tabKeys(id) {
+    if (id === 'jimun') return C.P.map(function (p) { return p.key; });
+    if (id === 'haeksim') return C.KEYS.map(function (k) { return k.key; });
+    if (id === 'seosul') return C.W.map(function (w) { return w.key; });
+    if (id === 'eobeop') return C.G.map(function (g) { return g.key; });
+    return id === 'dan' ? C.UV : [];
+  }
+  /* 다시 볼 차례 — 「다시」로 고른 지 하루가 지난 것(오늘 고른 것은 내일부터) */
+  function dueCount(id) {
+    var M = marksMap(), t0 = dayAt(Date.now()), n = 0;
+    tabKeys(id).forEach(function (k) { if (st(k) === 're' && tOf(M[k]) < t0) n++; });
+    return n;
+  }
+  /* 해 온 것 — 오늘 체크한 수 · 이번 주 공부한 날 · 이 판에서 공부한 날 · 체크한 수(다 봄 · 외움 · 맞음 · 알겠음 · 알아요) */
+  function doneStats() {
+    var M = marksMap(), now = Date.now(), t0 = dayAt(now), w0 = weekAt(now), days = {}, week = {}, today = 0, done = 0;
+    C.TABS.forEach(function (tb) {
+      tabKeys(tb.id).forEach(function (k) {
+        var m = M[k], s = st(k);
+        if (!s) return;
+        var t = tOf(m);
+        if (s === 'done' || s === 'ok') { done++; if (t >= t0) today++; }
+        if (!t) return;
+        days[dayAt(t)] = 1;
+        if (t >= w0) week[dayAt(t)] = 1;
+      });
+    });
+    return { today: today, week: Object.keys(week).length, days: Object.keys(days).length, done: done };
+  }
+
   /* ---------- 라우팅 — 주소(# 뒤, 이미 풀어 둔 글)를 받는다 ---------- */
   function route(h) {
     if (!C) return null;
     if (h.indexOf('p-') === 0) return C.byId[h.slice(2)] ? { view: 'p', id: h.slice(2) } : null;
     if (h.indexOf('a-') === 0) return hasA(C.byId[h.slice(2)]) ? { view: 'a', id: h.slice(2) } : null;   // 지문 분석 보기(0.4.0)
     if (h.indexOf('c-') === 0) return hasC(C.byId[h.slice(2)]) ? { view: 'c', id: h.slice(2) } : null;   // The Concise(0.7.0)
+    if (h === 'yesang') return hasY() ? { view: 'y' } : null;                                              // 출제 예상 한 번에 보기(0.9.0)
     for (var i = 0; i < C.TABS.length; i++) if (C.TABS[i].id === h) return { view: 't', tab: h };
     return null;
   }
@@ -169,6 +211,7 @@ var Review = (function () {
     var r = route(h || '');
     if (!r) return '';
     if (r.view === 't') return tabName(r.tab);
+    if (r.view === 'y') return Y이름;
     var p = C.byId[r.id];
     return pLabel(p) + ' — ' + p['제목'] + (r.view === 'a' ? ' · 지문 분석' : r.view === 'c' ? ' · The Concise' : '');
   }
@@ -179,7 +222,7 @@ var Review = (function () {
     var id = function (x) { return x; };
     return {
       jimun: { n: n(C.P, function (p) { return p.key; }, 'done'), N: C.P.length, re: 0 },
-      haeksim: { n: n(C.KEYS, function (k) { return k.key; }, 'done'), N: C.KEYS.length, re: 0 },
+      haeksim: { n: n(C.KEYS, function (k) { return k.key; }, 'done'), N: C.KEYS.length, re: n(C.KEYS, function (k) { return k.key; }, 're') },
       seosul: { n: n(C.W, function (w) { return w.key; }, 'ok'), N: C.W.length, re: n(C.W, function (w) { return w.key; }, 're') },
       eobeop: { n: n(C.G, function (g) { return g.key; }, 'ok'), N: C.G.length, re: n(C.G, function (g) { return g.key; }, 're') },
       dan: { n: n(C.UV, id, 'ok'), N: C.UV.length, re: n(C.UV, id, 're') }
@@ -187,10 +230,10 @@ var Review = (function () {
   }
   function tabCount(id) { var c = counts()[id]; return c.n + '/' + c.N; }
   var 뜻말 = { jimun: '다 봄', haeksim: '외움', seosul: '맞음', eobeop: '알겠음', dan: '알아요' };
-  /* 첫 화면 탭별 진도 — [{id, name, n, N, re, what}] */
+  /* 첫 화면 탭별 진도 — [{id, name, n, N, re, due, what}] · due 는 다시 볼 것 가운데 오늘 볼 차례(0.9.0) */
   function progress() {
     var c = counts();
-    return C.TABS.map(function (t) { return { id: t.id, name: t.name, n: c[t.id].n, N: c[t.id].N, re: c[t.id].re, what: 뜻말[t.id] }; });
+    return C.TABS.map(function (t) { return { id: t.id, name: t.name, n: c[t.id].n, N: c[t.id].N, re: c[t.id].re, due: c[t.id].re ? dueCount(t.id) : 0, what: 뜻말[t.id] }; });
   }
 
   /* ---------- 첫 화면 머리 · 시험 한눈에 ---------- */
@@ -200,27 +243,59 @@ var Review = (function () {
       var dtxt = d > 0 ? 'D-' + d : (d === 0 ? 'D-DAY' : '끝');
       dbox = '<div class="dbox"><span class="l">' + 시험이름() + '</span><span class="n">' + dtxt + '</span><span class="d">' + 날짜말(D['시험일']) + '</span></div>';
     }
-    var 문항 = (D['문항'] || []).length ? '<div class="g-score">' + D['문항'].map(function (x) {
-      return '<div class="g-cell"><span class="k">' + esc(x[0]) + '</span><b>' + esc(x[1]) + '</b>' + (x[2] ? '<span class="p">' + esc(x[2]) + '</span>' : '') + '</div>';
-    }).join('') + '</div>' : '';
     var y = 해();
     var 제목 = String(D['제목'] || '').replace(/폰\s*복습/g, '복습');   // 폰복습 데이터의 「영어 폰 복습」 — 앱에서는 「영어 복습」
     /* 머리 카드 아래 전체 진도 — 다섯 갈래 진도를 더한 것(첫 화면 진도 카드와 같은 셈) */
     var 합 = 0, 전체 = 0;
     progress().forEach(function (x) { 합 += x.n; 전체 += x.N; });
+    /* 0.9.0 오늘 · 이번 주 — 사실 숫자만(연속 기록 · 순위는 두지 않는다 · 261019 기원T). 0 인 것은 안 적는다 */
+    var s = doneStats(), mins = C.env.studyMin ? C.env.studyMin() : 0, 오늘 = [];
+    if (s.today) 오늘.push('오늘 ' + s.today + '개 체크');
+    if (mins) 오늘.push('오늘 ' + mins + '분');
+    if (s.week) 오늘.push('이번 주 ' + s.week + '일 공부');
     var 진도 = 전체 ? '<div class="hero-prog"><div class="hp-row"><span>전체 진도</span><span>' + 합 + ' / ' + 전체 + '</span></div>' +
-      '<span class="hp-bar" aria-hidden="true"><i style="width:' + Math.round(합 * 100 / 전체) + '%"></i></span></div>' : '';
+      '<span class="hp-bar" aria-hidden="true"><i style="width:' + Math.round(합 * 100 / 전체) + '%"></i></span>' +
+      (오늘.length ? '<p class="hp-today">' + 오늘.join(' · ') + '</p>' : '') + '</div>' : '';
     return '<header class="hero">' +
       '<div class="hero-card"><div class="hero-main"><h1><small>' + (y ? y + ' · ' : '') + esc(D['학교표시']) + '</small>' + safe(제목) + '</h1>' + dbox + '</div>' +
       진도 + '</div>' +
-      '</header>' +
-      '<section class="glance" aria-label="시험 한눈에">' + 문항 +
+      '</header>';
+  }
+  /* 시험 한눈에 — 0.9.0 머리 카드에서 떼어 첫 화면 아래쪽으로 내리고 접는다. 이 회차에서 처음 볼 때만 펼쳐 둔다
+     (app.js 가 첫 화면을 떠날 때 glanceSeen 으로 「봤다」를 적는다) */
+  function glanceHTML() {
+    var D = C.D;
+    var 문항 = (D['문항'] || []).length ? '<div class="g-score">' + D['문항'].map(function (x) {
+      return '<div class="g-cell"><span class="k">' + esc(x[0]) + '</span><b>' + esc(x[1]) + '</b>' + (x[2] ? '<span class="p">' + esc(x[2]) + '</span>' : '') + '</div>';
+    }).join('') + '</div>' : '';
+    return '<details class="glance"' + (U().gl !== C.env.cycle ? ' open' : '') + '><summary class="g-sum">시험 한눈에<small>문항 · 배점 · 범위</small></summary>' +
+      '<div class="g-body">' + 문항 +
       '<ul class="g-src">' + (D['범위'] || []).map(function (x) {
         var c = x['수'] ? x['수'] + '지문' : (x['덧'] || '');
         return '<li><b>' + esc(x['이름']) + '</b>' + esc(x['표기']) + (c ? ' <span class="c">' + esc(c) + '</span>' : '') + '</li>';
       }).join('') + '</ul>' +
       '<p class="g-howto">누르면 해석과 답이 나와요. 체크한 진도는 폰을 바꿔도 이어져요.</p>' +
-      '</section>';
+      '</div></details>';
+  }
+  function glanceSeen() { if (C && U().gl !== C.env.cycle) { U().gl = C.env.cycle; saveUi(); } }
+  /* 시험 직전(D-3 ~ D-DAY) — 새로 보기보다 다시 볼 것과 출제 예상으로 이끈다 */
+  function cramHTML() {
+    var d = dday();
+    if (d === null || d < 0 || d > 3) return '';
+    return '<section class="cram" aria-label="시험 직전"><h2 class="sec-h">시험 직전 · ' + (d ? 'D-' + d : 'D-DAY') + '</h2>' +
+      '<p>새로 보기보다 다시 볼 것부터 보고, 시험에 나올 곳을 한 번에 훑어요.</p>' +
+      (hasY() ? '<a class="btn cram-go" href="#yesang">' + Y이름 + '</a>' : '') + '</section>';
+  }
+  /* 시험 끝(시험일이 지났을 때) — 이 판에서 해 온 것을 사실 그대로 */
+  function endHTML() {
+    var d = dday();
+    if (d === null || d >= 0) return '';
+    var s = doneStats(), re = 0;
+    progress().forEach(function (x) { re += x.re; });
+    if (!s.days && !s.done) return '';
+    return '<section class="endcard" aria-label="시험 끝"><h2 class="sec-h">시험 끝</h2><p>' +
+      (s.days ? '이번 시험 동안 <b>' + s.days + '일</b> 공부했고, ' : '') + '체크를 <b>' + s.done + '개</b> 했어요.' +
+      (re ? ' 다시 볼 것이 <b>' + re + '개</b> 남아 있어요.' : '') + '</p></section>';
   }
 
   function tabsHTML(cur) {
@@ -244,6 +319,8 @@ var Review = (function () {
     }).join('') + '</div>';
   }
   function grpItems() { return [['all', '전체']].concat(C.ORDER.map(function (g) { return [g, g]; })); }
+  /* 다시 볼 것 칩(0.9.0) — 「전체」 바로 뒤 · 지금 수와 함께(0 이면 수를 안 적는다) */
+  function reItem(tab) { var n = counts()[tab].re; return ['re', '다시 볼 것' + (n ? ' ' + n : '')]; }
   function repBtn(key, what) {
     if (!C.env.report || !key) return '';
     return '<div class="rep-row"><button class="rep" data-act="rep" data-key="' + esc(key) + '" data-label="' + esc(what) + '">틀린 곳 알리기</button></div>';
@@ -293,26 +370,32 @@ var Review = (function () {
 
   /* ---------- 탭: 핵심 문장 ---------- */
   function haeksimHTML() {
-    var items = grpItems(), f = chipVal('haeksim', items);
+    var items = grpItems(), any = false;
+    items.splice(1, 0, reItem('haeksim'));
+    var f = chipVal('haeksim', items);
     var out = '<p class="intro">지문마다 먼저 외워 둘 핵심 문장이에요. 한글을 보고 영어 문장을 먼저 말해 본 뒤 눌러요.</p>' + chipsHTML('haeksim', items);
     C.ORDER.forEach(function (g) {
-      if (f !== 'all' && f !== g) return;
-      var ks = C.KEYS.filter(function (k) { return k.p['묶음'] === g; });
+      if (f !== 'all' && f !== 're' && f !== g) return;
+      var ks = C.KEYS.filter(function (k) { return k.p['묶음'] === g && (f !== 're' || st(k.key) === 're'); });
       if (!ks.length) return;
+      any = true;
       out += '<section class="grp"><h3 class="grp-h">' + esc(g) + '<span>' + ks.length + '문장 · ' +
         ks.filter(function (k) { return st(k.key) === 'done'; }).length + ' 외움</span></h3><div class="cards">';
       ks.forEach(function (k) {
-        var s = sentence(k.p, k.n), on = st(k.key) === 'done';
+        var s = sentence(k.p, k.n), ks2 = st(k.key);
+        /* 0.9.0 판정 두 칸 — 어느 탭이든 왼쪽 「다시」 · 오른쪽 「앎」 */
         out += '<article class="card kcard" data-key="' + esc(k.key) + '"><div class="card-h"><span class="tag">' + esc(k.p['이름']) + ' · 문장 ' + k.n + '</span>' +
-          '<a class="src" href="#p-' + enc(k.p.id) + '">' + esc(k.p['제목']) + ' ›</a></div>' +
+          '<a class="src" href="#p-' + enc(k.p.id) + '">' + esc(k.p['제목']) + ' ›</a>' + stateTag(ks2, '외움') + '</div>' +
           '<p class="ko-line">' + esc(s.ko) + '</p>' +
           '<button class="show" data-act="kshow">영어 문장 보기</button>' +
           '<div class="en-line" hidden><p class="en" style="margin:0">' + safe(s.html) + '</p>' + sayBtn(s.html) + '</div>' +
-          '<button class="mini" data-act="kdone" aria-pressed="' + on + '">' + (on ? '외웠어요' : '외웠으면 누르기') + '</button>' +
+          '<div class="judge"><button data-act="kre" data-v="re" aria-pressed="' + (ks2 === 're') + '">다시 볼래요</button>' +
+          '<button data-act="kdone" data-v="done" aria-pressed="' + (ks2 === 'done') + '">외웠어요</button></div>' +
           '</article>';
       });
       out += '</div></section>';
     });
+    if (!any) out += '<p class="empty">' + (f === 're' ? '「다시 볼래요」를 누른 문장이 여기에 모여요.' : '문장이 없어요.') + '</p>';
     return out;
   }
 
@@ -331,7 +414,7 @@ var Review = (function () {
     var m = String(x).match(/^([A-E])\s*—\s*([\s\S]*)$/);
     return '<li>' + (m ? '<span class="ok">' + m[1] + '</span>' + esc(m[2]) : esc(x)) + '</li>';
   }
-  function stateTag(s, okWord) { return s ? '<span class="state ' + s + '">' + (s === 'ok' ? okWord : '다시 볼 것') + '</span>' : ''; }
+  function stateTag(s, okWord) { return s ? '<span class="state ' + s + '">' + (s === 're' ? '다시 볼 것' : okWord) + '</span>' : ''; }
   /* Top Tier 서술형(0.6.0 · 261017) — 모양 「글」의 글상자(지문 · 요약문 · 지문 전체)와 힌트 · 이것도 맞아요 · 깎이는 곳 */
   function wBoxHTML(b) {
     var body = (b['글'] || []).map(function (x) { return '<p class="en">' + blankify(x) + '</p>'; }).join('');
@@ -379,12 +462,12 @@ var Review = (function () {
       (w['깎'] && w['깎'].length ? '<div class="tip"><span class="lab">깎이는 곳</span><ul class="wcut">' +
         w['깎'].map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div>' : '') +
       (w['포인트'] ? '<p class="tip"><span class="lab">빠뜨리기 쉬운 곳</span>' + esc(w['포인트']) + '</p>' : '') +
-      '<div class="judge"><button data-act="wj" data-v="ok" aria-pressed="' + (s === 'ok') + '">맞았어요</button><button data-act="wj" data-v="re" aria-pressed="' + (s === 're') + '">다시 볼래요</button></div>' +
+      '<div class="judge"><button data-act="wj" data-v="re" aria-pressed="' + (s === 're') + '">다시 볼래요</button><button data-act="wj" data-v="ok" aria-pressed="' + (s === 'ok') + '">맞았어요</button></div>' +
       '</div>' + repBtn(w.key, tabName('seosul') + ' · ' + (wSrc(w) || w['틀'] || '')) + '</article>';
     return h;
   }
   function seosulHTML() {
-    var items = [['all', '전체']].concat(있는출처(C.W).map(function (k) { return [k, 출처말[k] || k]; })).concat([['re', '다시 볼 것']]);
+    var items = [['all', '전체'], reItem('seosul')].concat(있는출처(C.W).map(function (k) { return [k, 출처말[k] || k]; }));
     var f = chipVal('seosul', items);
     var list = C.W.filter(function (w) {
       if (f === 'all') return true;
@@ -404,11 +487,11 @@ var Review = (function () {
       stateTag(s, '알겠음') + '</div>' +
       '<p class="g-name">' + esc(g['이름']) + '</p><p class="en g-ex">' + esc(g['예문']) + '</p>' +
       '<button class="reveal" data-act="gshow">왜 이 형태인지 보기</button><div class="ans" hidden><p class="why">' + esc(g['이유']) + '</p>' +
-      '<div class="judge"><button data-act="gj" data-v="ok" aria-pressed="' + (s === 'ok') + '">알겠어요</button><button data-act="gj" data-v="re" aria-pressed="' + (s === 're') + '">다시 볼래요</button></div></div>' +
+      '<div class="judge"><button data-act="gj" data-v="re" aria-pressed="' + (s === 're') + '">다시 볼래요</button><button data-act="gj" data-v="ok" aria-pressed="' + (s === 'ok') + '">알겠어요</button></div></div>' +
       repBtn(g.key, '어법 · ' + (g['코드'] ? g['코드'] + ' · ' : '') + (g['이름'] || '')) + '</article>';
   }
   function eobeopHTML() {
-    var items = [['all', '전체']].concat(C.GORDER.map(function (g) { return [g, g === 학습지묶음 ? '학교 학습지' : g]; })).concat([['re', '다시 볼 것']]);
+    var items = [['all', '전체'], reItem('eobeop')].concat(C.GORDER.map(function (g) { return [g, g === 학습지묶음 ? '학교 학습지' : g]; }));
     var f = chipVal('eobeop', items);
     var out = '<p class="intro">규칙과 예문을 먼저 보고, 왜 그 형태인지 스스로 말해 본 뒤 눌러요.' +
       (C.GORDER[0] === 학습지묶음 ? ' 학교 학습지가 가르친 규칙이 맨 앞이에요.' : '') + '</p>' + chipsHTML('eobeop', items);
@@ -427,8 +510,8 @@ var Review = (function () {
   /* ---------- 탭: 단어 ---------- */
   function danItems() {
     var 학교있음 = C.V.some(function (v) { return v['학교']; });
-    return [['all', '전체']].concat(학교있음 ? [['school', '학교 낱말']] : [])
-      .concat(있는출처(C.V).map(function (k) { return [k, 출처말[k] || k]; })).concat([['re', '다시 볼 것']]);
+    return [['all', '전체'], reItem('dan')].concat(학교있음 ? [['school', '학교 낱말']] : [])
+      .concat(있는출처(C.V).map(function (k) { return [k, 출처말[k] || k]; }));
   }
   function wordList() {
     var f = chipVal('dan', danItems());
@@ -533,7 +616,8 @@ var Review = (function () {
     var h = '<div class="pbar"><a class="back" href="#jimun">‹ 목록</a><span class="t">' + esc(pLabel(p)) + '</span><span class="nv">' +
       (prev ? '<a href="#p-' + enc(prev.id) + '" aria-label="이전 지문">‹</a>' : '<span aria-hidden="true">‹</span>') +
       (next ? '<a href="#p-' + enc(next.id) + '" aria-label="다음 지문">›</a>' : '<span aria-hidden="true">›</span>') + '</span></div>';
-    h += '<header class="phead"><p class="eyebrow">' + esc(pLabel(p)) + '</p><h2>' + esc(p['제목']) + '</h2>' +
+    /* 0.9.0 머리 위 작은 제목(지문 이름)은 위쪽 막대에 이미 있어 뺐다 */
+    h += '<header class="phead"><h2>' + esc(p['제목']) + '</h2>' +
       (p['영제목'] ? '<p class="en-t">' + esc(p['영제목']) + '</p>' : '') + '</header>';
     h += pSwitch(p, 'p');
     h += picHTML(p);
@@ -765,8 +849,8 @@ var Review = (function () {
     var h = '<div class="pbar"><a class="back" href="#jimun">‹ 목록</a><span class="t">' + esc(pLabel(p)) + ' · 분석</span><span class="nv">' +
       (prev ? '<a href="#a-' + enc(prev.id) + '" aria-label="이전 지문 분석">‹</a>' : '<span aria-hidden="true">‹</span>') +
       (next ? '<a href="#a-' + enc(next.id) + '" aria-label="다음 지문 분석">›</a>' : '<span aria-hidden="true">›</span>') + '</span></div>';
-    h += '<header class="phead"><p class="eyebrow">지문 분석 · ' + esc(pLabel(p)) + '</p><h2>' + esc(p['제목']) + '</h2>' +
-      (p['영제목'] ? '<p class="en-t">' + esc(p['영제목']) + '</p>' : '') + '</header>';
+    /* 0.9.0 분석 화면은 본문이 빨리 오게 — 작은 제목 · 영어 제목을 빼고 한 줄 제목만(지문 이름은 위쪽 막대에) */
+    h += '<header class="phead"><h2>' + esc(p['제목']) + '</h2></header>';
     h += pSwitch(p, 'a');
     h += aTabsHTML(ts, cur) + '<div id="abody" data-p="' + esc(p.id) + '" data-tab="' + cur + '">' + aBody(p, cur) + '</div>';
     h += repBtn(p.key, aRepLabel(p, cur));
@@ -851,8 +935,7 @@ var Review = (function () {
     var h = '<div class="pbar"><a class="back" href="#jimun">‹ 목록</a><span class="t">' + esc(pLabel(p)) + ' · The Concise</span><span class="nv">' +
       (prev ? '<a href="#c-' + enc(prev.id) + '" aria-label="이전 지문 The Concise">‹</a>' : '<span aria-hidden="true">‹</span>') +
       (next ? '<a href="#c-' + enc(next.id) + '" aria-label="다음 지문 The Concise">›</a>' : '<span aria-hidden="true">›</span>') + '</span></div>';
-    h += '<header class="phead"><p class="eyebrow">The Concise · ' + esc(pLabel(p)) + '</p><h2>' + esc(p['제목']) + '</h2>' +
-      (p['영제목'] ? '<p class="en-t">' + esc(p['영제목']) + '</p>' : '') + '</header>';
+    h += '<header class="phead"><h2>' + esc(p['제목']) + '</h2></header>';   // 0.9.0 분석 화면과 같다
     h += pSwitch(p, 'c');
     h += '<div id="cbody">' + cBody(cOf(p)) + '</div>';
     h += '<a class="anext" href="#p-' + enc(p.id) + '">‹ 지문으로 돌아가기</a>';
@@ -860,6 +943,79 @@ var Review = (function () {
     h += '<nav class="pn">' + (prev ? '<a href="#c-' + enc(prev.id) + '"><span class="k">‹ 이전 지문</span><span class="t">' + esc(prev['제목']) + '</span></a>' : '<span></span>') +
       (next ? '<a class="nx" href="#c-' + enc(next.id) + '"><span class="k">다음 지문 ›</span><span class="t">' + esc(next['제목']) + '</span></a>' : '<span></span>') + '</nav>';
     return h;
+  }
+
+  /* ---------- 출제 예상 한 번에 보기(0.9.0 · #yesang) ----------
+     지문마다 The Concise 「출제 예상 자리」(없으면 지문 화면 「시험에 나오는 자리」)를 묶음 차례로 한 화면에 모은다.
+     시험 직전(D-3 ~ D-DAY) 첫 화면 칸이 여기로 데려온다. 체크 칸이 없다 — 진도 번호가 그대로다 */
+  var Y이름 = '출제 예상 한 번에 보기';
+  function yOf(p) {
+    var c = cOf(p), mc = c ? cStrs(c.expectationsMc) : [], sa = c ? cStrs(c.expectationsSa) : [], ex = c ? cStrs(c.expectations) : [];
+    if (mc.length || sa.length || ex.length) return { mc: mc, sa: sa, ex: ex, z: [] };
+    var z = cStrs(p['자리']);
+    return z.length ? { mc: [], sa: [], ex: [], z: z } : null;
+  }
+  function hasY() { return !!C && C.P.some(function (p) { return !!yOf(p); }); }
+  function yList(list) { return '<ul class="cc-exp">' + list.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>'; }
+  function yesangHTML() {
+    var h = '<div class="pbar"><a class="back" href="#home">‹ 처음</a><span class="t"></span><span class="nv"></span></div>' +   // 이름은 바로 아래 제목에 있다
+      '<header class="phead"><h2>' + Y이름 + '</h2></header>' +
+      '<p class="intro">지문마다 시험에 나올 만한 곳을 모았어요. 지문 이름을 누르면 그 지문으로 가요.</p>';
+    C.ORDER.forEach(function (g) {
+      var ps = C.P.filter(function (p) { return p['묶음'] === g && yOf(p); });
+      if (!ps.length) return;
+      h += '<section class="ygrp"><h3 class="grp-h">' + esc(g) + '<span>' + ps.length + '지문</span></h3>';
+      ps.forEach(function (p) {
+        var y = yOf(p);
+        h += '<article class="acard ycard"><a class="y-h" href="#' + (hasC(p) ? 'c-' : 'p-') + enc(p.id) + '"><span class="row-l">' + esc(p['이름']) + '</span>' +
+          '<span class="y-t">' + esc(p['제목']) + ' ›</span></a>' +
+          (y.mc.length ? '<p class="cc-sub">객관식</p>' + yList(y.mc) : '') + (y.sa.length ? '<p class="cc-sub">서답형</p>' + yList(y.sa) : '') +
+          (y.ex.length ? yList(y.ex) : '') +
+          (y.z.length ? '<ul class="bul">' + y.z.map(function (x) { return '<li>' + safe(x) + '</li>'; }).join('') + '</ul>' : '') + '</article>';
+      });
+      h += '</section>';
+    });
+    return h;
+  }
+
+  /* ---------- 누른 뒤 한 줄 알림(0.9.0) — 묶음이나 탭을 다 마쳤으면 그 사실을, 다시 볼 것에서 뺐으면 남은 수를 ---------- */
+  var 마침말 = { jimun: '다 봤어요', haeksim: '다 외웠어요', seosul: '모두 맞혔어요', eobeop: '모두 확인했어요', dan: '모두 안다고 했어요' };
+  function goodOf(tab) { return tab === 'jimun' || tab === 'haeksim' ? 'done' : 'ok'; }
+  /* 그 항목이 든 묶음 — 지문 · 핵심 문장 · 서술형(지문이 있으면 그 지문 묶음, 없으면 출처) · 어법. 단어는 묶음을 안 센다 */
+  function groupOf(tab, key) {
+    var hit, name, keys;
+    if (tab === 'jimun' || tab === 'haeksim') {
+      var list = tab === 'jimun' ? C.P.map(function (p) { return { key: p.key, g: p['묶음'] }; }) : C.KEYS.map(function (k) { return { key: k.key, g: k.p['묶음'] }; });
+      hit = list.filter(function (x) { return x.key === key; })[0];
+      if (!hit) return null;
+      name = hit.g;
+      keys = list.filter(function (x) { return x.g === name; }).map(function (x) { return x.key; });
+    } else if (tab === 'seosul') {
+      var wg = function (w) { return w['지문'] && C.byId[w['지문']] ? C.byId[w['지문']]['묶음'] : (출처말[w['출처']] || w['출처'] || ''); };
+      hit = C.W.filter(function (w) { return w.key === key; })[0];
+      if (!hit) return null;
+      name = wg(hit);
+      keys = C.W.filter(function (w) { return wg(w) === name; }).map(function (w) { return w.key; });
+    } else if (tab === 'eobeop') {
+      hit = C.G.filter(function (g) { return g.key === key; })[0];
+      if (!hit) return null;
+      keys = C.G.filter(function (g) { return g['묶음'] === hit['묶음']; }).map(function (g) { return g.key; });
+      name = hit['묶음'] === 학습지묶음 ? '학교 학습지' : hit['묶음'];
+    } else return null;
+    return name ? { name: name, keys: keys } : null;
+  }
+  function finishMsg(tab, key) {
+    var c = counts()[tab];
+    if (c.N > 1 && c.n === c.N) return tabName(tab) + ' ' + c.N + '개를 ' + 마침말[tab];
+    var g = groupOf(tab, key), good = goodOf(tab);
+    if (!g || g.keys.length < 2 || !g.keys.every(function (k) { return st(k) === good; })) return '';
+    return g.name + ' ' + tabName(tab) + ' ' + g.keys.length + '개를 ' + 마침말[tab];
+  }
+  function after(tab, key, prev, now) {
+    if (!C.env.toast || prev === now) return;
+    var msg = now === goodOf(tab) ? finishMsg(tab, key) : '';
+    if (!msg && prev === 're') msg = '다시 볼 것에서 뺐어요 · 남은 ' + counts()[tab].re + '개';
+    if (msg) C.env.toast(msg);
   }
 
   /* ---------- 그리기 ---------- */
@@ -871,6 +1027,7 @@ var Review = (function () {
   function renderPassage(id) { return passageHTML(id) + tailHTML(); }
   function renderAnalysis(id) { return analysisHTML(id) + tailHTML(); }
   function renderConcise(id) { return conciseHTML(id) + tailHTML(); }
+  function renderYesang() { return yesangHTML() + tailHTML(); }
   function refreshTabs() {
     var t = document.querySelector('.tabs');
     if (!t) return;
@@ -878,13 +1035,16 @@ var Review = (function () {
     if (a) a.remove();
     var sel = t.querySelector('[aria-selected="true"]');
     t.outerHTML = tabsHTML(sel ? sel.getAttribute('href').slice(1) : '');
+    var rc = document.querySelector('.chip[data-val="re"]'), tab = U().tab;   // 다시 볼 것 칩의 수도 맞춘다(0.9.0)
+    if (rc && TABNAMES[tab]) rc.textContent = reItem(tab)[1];
   }
+  var TABNAMES = { haeksim: 1, seosul: 1, eobeop: 1, dan: 1 };
   function redrawDeck() { var d = document.getElementById('deck'); if (d) d.innerHTML = flashHTML(); }
   function setJudge(card, s, okWord) {
     Array.prototype.forEach.call(card.querySelectorAll('.judge button'), function (x) { x.setAttribute('aria-pressed', s === x.getAttribute('data-v')); });
     var tag = card.querySelector('.state'), hd = card.querySelector('.card-h');
     if (tag) tag.remove();
-    if (s) { var sp = document.createElement('span'); sp.className = 'state ' + s; sp.textContent = s === 'ok' ? okWord : '다시 볼 것'; hd.appendChild(sp); }
+    if (s) { var sp = document.createElement('span'); sp.className = 'state ' + s; sp.textContent = s === 're' ? '다시 볼 것' : okWord; hd.appendChild(sp); }
   }
 
   /* ---------- 누르기 — 돌려주는 값: false(내 것이 아니다) · true(처리했다) · 'render'(화면을 다시 그려야 한다) ---------- */
@@ -911,18 +1071,21 @@ var Review = (function () {
         Array.prototype.forEach.call(document.querySelectorAll('.modebar button'), function (x) { x.setAttribute('aria-pressed', x === b); });
         return true;
       case 'pdone':
-        key = b.getAttribute('data-key');
-        now = st(key) === 'done' ? 'none' : 'done';
+        key = b.getAttribute('data-key'); cur = st(key);
+        now = cur === 'done' ? 'none' : 'done';
         setm([[key, now]]);
         b.setAttribute('aria-pressed', now === 'done'); b.textContent = now === 'done' ? '다 봤어요 · 다시 누르면 취소' : '이 지문 다 봤어요';
+        after('jimun', key, cur, now);
         return true;
       case 'kshow':
         card = b.closest('.kcard'); card.querySelector('.en-line').hidden = false; b.hidden = true; return true;
-      case 'kdone':
-        card = b.closest('.kcard'); key = card.getAttribute('data-key');
-        now = st(key) === 'done' ? 'none' : 'done';
+      case 'kdone': case 'kre':   // 0.9.0 핵심 문장도 두 칸(다시 볼래요 · 외웠어요) — 누른 칸을 다시 누르면 지운다
+        card = b.closest('.kcard'); key = card.getAttribute('data-key'); cur = st(key);
+        v = act === 'kre' ? 're' : 'done';
+        now = cur === v ? 'none' : v;
         setm([[key, now]]);
-        b.setAttribute('aria-pressed', now === 'done'); b.textContent = now === 'done' ? '외웠어요' : '외웠으면 누르기';
+        setJudge(card, now === 'none' ? '' : now, '외움');
+        after('haeksim', key, cur, now);
         refreshTabs(); return true;
       case 'wko':
         var ko = b.parentNode.querySelector('.sub-ko'); ko.hidden = !ko.hidden; b.textContent = ko.hidden ? '해석 보기' : '해석 접기'; return true;
@@ -936,10 +1099,11 @@ var Review = (function () {
       case 'wshow': case 'gshow':
         card = b.closest('.card'); card.querySelector('.ans').hidden = false; b.hidden = true; return true;
       case 'wj': case 'gj':
-        card = b.closest('.card'); key = card.getAttribute('data-key'); v = b.getAttribute('data-v');
-        now = okre(st(key)) === v ? 'none' : v;
+        card = b.closest('.card'); key = card.getAttribute('data-key'); v = b.getAttribute('data-v'); cur = okre(st(key));
+        now = cur === v ? 'none' : v;
         setm([[key, now]]);
         setJudge(card, now === 'none' ? '' : now, act === 'wj' ? '맞음' : '알겠음');
+        after(act === 'wj' ? 'seosul' : 'eobeop', key, cur, now);
         refreshTabs(); return true;
       case 'wm':
         U().wm = b.getAttribute('data-v') === 'd2w' ? 'd2w' : 'w2m'; saveUi(); return 'render';
@@ -947,7 +1111,8 @@ var Review = (function () {
         deck.open = !deck.open; redrawDeck(); return true;
       case 'dj':
         cur = deck.list[deck.i]; v = b.getAttribute('data-v');
-        if (cur && st(cur.key) !== v) setm([[cur.key, v]]);
+        var was = cur ? st(cur.key) : '';
+        if (cur && was !== v) { setm([[cur.key, v]]); after('dan', cur.key, was, v); }
         deck.i++; deck.open = false; redrawDeck(); refreshTabs(); return true;
       case 'dagain':
         deck.key = ''; ensureDeck(); redrawDeck(); return true;
@@ -1005,7 +1170,8 @@ var Review = (function () {
   return {
     setup: setup, ready: function () { return !!C; }, route: route, label: label, href: href,
     tabName: tabName, firstTab: firstTab, heroHTML: heroHTML, progress: progress,
-    renderTab: renderTab, renderPassage: renderPassage, renderAnalysis: renderAnalysis, renderConcise: renderConcise, refreshTabs: refreshTabs, click: click,
+    glanceHTML: glanceHTML, glanceSeen: glanceSeen, cramHTML: cramHTML, endHTML: endHTML, hasYesang: hasY, stats: function () { return C ? doneStats() : null; },
+    renderTab: renderTab, renderPassage: renderPassage, renderAnalysis: renderAnalysis, renderConcise: renderConcise, renderYesang: renderYesang, refreshTabs: refreshTabs, click: click,
     data: function () { return C ? C.D : null; },
     util: { esc: esc, safe: safe, enc: enc, plain: plain, underline: underline, blankify: blankify, segHTML: segHTML, gWords: gWords },
     concise: { has: function (id) { return !!(C && C.byId[id] && hasC(C.byId[id])); } },
