@@ -1,6 +1,7 @@
 /* UP:GRADE — 관리자 화면(구현 사양 5절 「관리자」) · role = admin 일 때만 app.js 가 연다
    ① 현황판 — 학교를 고르면 학생마다 마지막 접속 · 지문 다 봄 · 핵심 외움 · 서술형 · 어법 · 단어.
       N 은 그 학교 공개 판의 수(counts)이고, 판에 없는 key 는 세지 않는다(판 내용을 받아 번호를 맞대 본다)
+      정렬(이름 · 최근 접속 · 오래 안 연 · 학습시간 많은/적은 · 최근 가입 · 숫자 칸마다 많은 순 — 0.11.1)
    ② 학생 관리 — 학교 고치기 · 새 비밀번호 정하기 · 막기/풀기 · 퇴원(이름을 그대로 쳐야 지운다) · 가입 코드 바꾸기 ·
       정렬(학교·이름 · 최근 접속 · 오래 안 연 · 학습시간 많은/적은 · 최근 가입 — 0.8.0)
    ③ 자료 판 — 학교·과목마다 판 목록 · 미리보기로 열기 · 공개 · 되돌리기(바로 전 지난 판 번호로 pack_publish)
@@ -11,7 +12,7 @@ var Admin = (function () {
   var app = null;       // app.js 가 넘겨준 도구 — state · schools · schoolLabel · go · toast · refresh · preview
   var S = {
     packs: null, profiles: null, reports: null, board: {}, cache: {},
-    loading: {}, err: {}, school: '', stuSchool: '', stuSort: '', openStu: '', ask: '', repAll: false, busy: false
+    loading: {}, err: {}, school: '', boardSort: '', stuSchool: '', stuSort: '', openStu: '', ask: '', repAll: false, busy: false
   };
   var SEP = '␟', DAY = 86400000;
   var 칸이름 = [['지문', '지문'], ['핵심', '핵심'], ['서술형', '서술형'], ['어법', '어법'], ['단어', '단어']];
@@ -159,34 +160,63 @@ var Admin = (function () {
     return '<span class="seen' + (old ? ' stale' : '') + '" data-stale="' + old + '">' +
       (s.last_seen ? '마지막 접속 ' + esc(ago(s.last_seen)) : '한 번도 안 열었어요') + '</span>';
   }
+  /* 정렬(0.11.1) — 학생 관리와 같은 줄 세우기에 숫자 칸마다 「많은 순」을 더했다. 기본은 이름순, 같으면 이름 차례.
+     숫자 칸은 과목마다 그 과목 숫자로 따로 줄 세운다. 학습시간은 학생 관리가 받는 study_sec 를 쓴다 */
+  var 현황정렬칸 = [['', '이름순'], ['seen', '최근 접속순'], ['seen-old', '오래 안 연 순'],
+    ['study', '학습시간 많은 순'], ['study-low', '학습시간 적은 순'], ['join', '최근 가입순'],
+    ['p', '지문 다 봄 많은 순'], ['k', '핵심 외움 많은 순'], ['w', '서술형 맞음 많은 순'], ['g', '어법 알겠음 많은 순'], ['v', '단어 알아요 많은 순']];
+  var 숫자칸 = { p: ['지문', 'done'], k: ['핵심', 'done'], w: ['서술형', 'ok'], g: ['어법', 'ok'], v: ['단어', 'ok'] };
+  function boardKinds(parts) {   // 현황판에 칸이 서는 숫자만(statsHTML 과 같은 셈)
+    return Object.keys(숫자칸).filter(function (c) {
+      return parts.some(function (part) {
+        var n = (part.meta.counts || {})[숫자칸[c][0]];
+        return typeof n === 'number' ? n > 0 : part.keys[c].length > 0;
+      });
+    });
+  }
+  function sortBoard(studs, how, tallies) {
+    var c = 숫자칸[how];
+    return sortBy(studs, function (s) {
+      if (c) return -(tallies && tallies[s.id] ? tallies[s.id][how][c[1]] : 0);
+      var p = profileOf(s.id);
+      return sortKey(s, how, p && p.study_sec);
+    });
+  }
   function boardHTML(school) {
     var list = app.schools();
     if (!school) school = S.school || (app.state.profile && app.state.profile.school) || (list[0] && list[0].name) || '';
     S.school = school;
     var sel = '<label class="fld"><span>학교</span><select data-change="a-school">' + schoolOptions(school, false) + '</select></label>';
     if (!school) return sel + '<p class="empty">학교 목록이 없어요</p>';
+    if (!S.profiles && !S.err.profiles) load('profiles', ensureProfiles);   // 학습시간 정렬에만 쓴다
     var b = S.board[school], name = 'board:' + school;
+    var kinds = b ? boardKinds(b.parts) : [], study = hasStudy();
+    var opts = 현황정렬칸.filter(function (x) { return !숫자칸[x[0]] || kinds.indexOf(x[0]) >= 0; });
+    var how = opts.some(function (x) { return x[0] === S.boardSort; }) && (study || S.boardSort.indexOf('study') !== 0) ? S.boardSort : '';
+    sel = '<div class="a-filters">' + sel + '<label class="fld"><span>정렬</span><select data-change="a-board-sort">' + sortOptions(how, study, opts) + '</select></label></div>';
     if (!b) { if (!S.err[name]) load(name, function () { return loadBoard(school); }); return sel + waitHTML(name); }
     var studs = studentsOf(b.rows);
     var old = studs.filter(function (s) { return stale(s.last_seen); }).length;
-    var out = sel + '<p class="a-sum" data-students="' + studs.length + '" data-stale="' + old + '">학생 ' + studs.length + '명 · 7일 넘게 안 연 학생 ' + old + '명</p>';
+    var out = sel + '<p class="a-sum" data-students="' + studs.length + '" data-stale="' + old + '" data-sort="' + esc(how) + '">학생 ' + studs.length + '명 · 7일 넘게 안 연 학생 ' + old + '명</p>';
     if (!studs.length) return out + '<p class="empty">가입한 학생이 없어요</p>';
     if (!b.parts.length) {
       return out + '<div class="notice"><b>공개된 판이 없어요</b><p>자료 판에서 공개하면 여기에 진도가 나와요.</p></div>' +
-        studs.map(function (s) {
+        sortBoard(studs, how).map(function (s) {
           return '<article class="scard" data-uid="' + esc(s.id) + '"><div class="scard-h"><b class="sname">' + esc(s.name) + '</b>' +
             (s.blocked ? '<span class="tagb block">막힘</span>' : '') + seenHTML(s) + '</div></article>';
         }).join('');
     }
     b.parts.forEach(function (part) {
-      var m = part.meta, sub = m.subject || '';
+      var m = part.meta, sub = m.subject || '', ts = {};
       out += '<section class="pgrp" data-subject="' + esc(sub) + '"><h2 class="sec-h">' + esc(partTitle(m)) + '</h2>';
       studs.forEach(function (s) {
         var marks = s.by[sub + SEP + m.cycle] || {};
-        var t = SyncCore.tally(function (k) { return Object.prototype.hasOwnProperty.call(marks, k) ? marks[k] : ''; }, part.keys);
+        ts[s.id] = SyncCore.tally(function (k) { return Object.prototype.hasOwnProperty.call(marks, k) ? marks[k] : ''; }, part.keys);
+      });
+      sortBoard(studs, how, ts).forEach(function (s) {
         out += '<article class="scard" data-uid="' + esc(s.id) + '"><div class="scard-h">' +
           '<a class="sname" href="#admin/who/' + enc(school) + '/' + enc(subjTok(sub)) + '/' + enc(s.id) + '">' + esc(s.name) + '</a>' +
-          (s.blocked ? '<span class="tagb block">막힘</span>' : '') + seenHTML(s) + '</div>' + statsHTML(t, m.counts) + '</article>';
+          (s.blocked ? '<span class="tagb block">막힘</span>' : '') + seenHTML(s) + '</div>' + statsHTML(ts[s.id], m.counts) + '</article>';
       });
       out += '</section>';
     });
@@ -234,27 +264,31 @@ var Admin = (function () {
   var 정렬칸 = [['', '학교 · 이름순'], ['seen', '최근 접속순'], ['seen-old', '오래 안 연 순'],
     ['study', '학습시간 많은 순'], ['study-low', '학습시간 적은 순'], ['join', '최근 가입순']];
   function hasStudy() { return (S.profiles || []).some(function (p) { return typeof p.study_sec === 'number'; }); }
-  function sortOptions(cur, study) {
-    return 정렬칸.filter(function (x) { return study || x[0].indexOf('study') !== 0; }).map(function (x) {
+  function sortOptions(cur, study, 칸) {
+    return (칸 || 정렬칸).filter(function (x) { return study || x[0].indexOf('study') !== 0; }).map(function (x) {
       return '<option value="' + x[0] + '"' + (x[0] === cur ? ' selected' : '') + '>' + x[1] + '</option>';
     }).join('');
   }
   function tsOr(ts, alt) { var t = Date.parse(ts || ''); return isNaN(t) ? alt : t; }
-  function sortProfiles(list, how) {
-    if (!how) return list;
-    function key(p) {
-      if (how === 'seen') return -tsOr(p.last_seen, -Infinity);
-      if (how === 'seen-old') return tsOr(p.last_seen, -Infinity);
-      if (how === 'study') return -(Number(p.study_sec) || 0);
-      if (how === 'study-low') return Number(p.study_sec) || 0;
-      if (how === 'join') return -tsOr(p.created_at, -Infinity);
-      return 0;
-    }
+  /* 줄 세우는 값 — 작은 것이 위. study 는 학습시간(초) — 현황판도 함께 쓴다 */
+  function sortKey(p, how, study) {
+    if (how === 'seen') return -tsOr(p.last_seen, -Infinity);
+    if (how === 'seen-old') return tsOr(p.last_seen, -Infinity);
+    if (how === 'study') return -(Number(study) || 0);
+    if (how === 'study-low') return Number(study) || 0;
+    if (how === 'join') return -tsOr(p.created_at, -Infinity);
+    return 0;
+  }
+  function sortBy(list, key) {
     return list.map(function (p, i) { return { p: p, k: key(p), i: i }; }).sort(function (a, b) {
       if (a.k !== b.k) return a.k < b.k ? -1 : 1;
       var n = String(a.p.name || '').localeCompare(String(b.p.name || ''), 'ko');
       return n || a.i - b.i;
     }).map(function (x) { return x.p; });
+  }
+  function sortProfiles(list, how) {
+    if (!how) return list;
+    return sortBy(list, function (p) { return sortKey(p, how, p.study_sec); });
   }
   function studyText(sec) {
     var m = Math.floor((Number(sec) || 0) / 60), h = Math.floor(m / 60);
@@ -472,10 +506,11 @@ var Admin = (function () {
     if (c === 'a-school') { app.go('admin/board/' + enc(el.value)); return true; }
     if (c === 'a-stu-school') { S.stuSchool = el.value; S.openStu = ''; app.refresh(true); return true; }
     if (c === 'a-stu-sort') { S.stuSort = el.value; app.refresh(true); return true; }
+    if (c === 'a-board-sort') { S.boardSort = el.value; app.refresh(true); return true; }
     return false;
   }
 
-  return { init: init, reset: reset, render: render, click: click, submit: submit, input: input, change: change, _kindLabel: kindLabel, _prevOld: prevOld, _sortProfiles: sortProfiles, _studyText: studyText };
+  return { init: init, reset: reset, render: render, click: click, submit: submit, input: input, change: change, _kindLabel: kindLabel, _prevOld: prevOld, _sortProfiles: sortProfiles, _sortBoard: sortBoard, _studyText: studyText };
 })();
 
 if (typeof module === 'object' && module.exports) module.exports = Admin;
