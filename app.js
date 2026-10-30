@@ -119,7 +119,7 @@
   }
   function openGuide() {
     $sheet.innerHTML = guideHTML();
-    $sheet.hidden = false;
+    showSheet();
     fitSheet();
     document.body.classList.add('modal-open');
   }
@@ -186,12 +186,20 @@
   function setWm() {   // 관리자 계정에는 「학생용」을 띄우지 않는다(260930)
     $wm.textContent = A.session && A.profile && A.profile.name && A.profile.role !== 'admin' ? A.profile.name + ' 학생용' : '';
   }
-  var toastT = 0;
+  /* 알림 — 처음에는 :empty 로 숨어 있어 글을 넣자마자 on 을 붙이면 툭 나타난다. 두 그림 뒤에 붙여 번져 나오게 하고,
+     2.6초는 붙인 뒤부터 센다(화면이 뒤에 있어 그림이 멈춘 동안 시간만 지나 알림이 남는 일이 없게) */
+  var toastT = 0, toastN = 0;
   function toast(msg) {
+    var n = ++toastN;
     $toast.textContent = msg;
-    $toast.classList.add('on');
     clearTimeout(toastT);
-    toastT = setTimeout(function () { $toast.classList.remove('on'); }, 2600);
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        if (n !== toastN) return;
+        $toast.classList.add('on');
+        toastT = setTimeout(function () { $toast.classList.remove('on'); }, 2600);
+      });
+    });
   }
   function setOffline(off) {
     off = !!off;
@@ -651,7 +659,7 @@
       '<label class="fld"><span>어디가 어떻게 틀렸는지 적어 주세요</span><textarea id="rep-body" rows="5" maxlength="1000"></textarea></label>' +
       '<p class="sheet-n"><span id="rep-n">0</span> / 1000</p><p class="msg" id="rep-msg" role="alert"></p>' +
       '<div class="sheet-btns"><button class="btn ghost" data-act="rep-x">닫기</button><button class="btn" data-act="rep-send" id="rep-send">보내기</button></div></div>';
-    $sheet.hidden = false;
+    showSheet();
     fitSheet();
     document.body.classList.add('modal-open');
     setTimeout(function () { var t = document.getElementById('rep-body'); if (t) t.focus(); }, 30);
@@ -668,11 +676,28 @@
     window.visualViewport.addEventListener('resize', fitSheet);
     window.visualViewport.addEventListener('scroll', fitSheet);
   }
+  /* 창 열고 닫기 — 툭 뜨지 않게(style.css .sheet.on). 열 때는 hidden 을 풀고 두 그림 뒤에 on, 닫을 때는 on 을 떼고 0.16초 뒤에 숨긴다.
+     번지는 동안 다시 열거나 닫으면 앞의 것은 버린다(sheetN) */
+  var sheetT = 0, sheetN = 0;
+  function showSheet() {
+    var n = ++sheetN;
+    clearTimeout(sheetT);
+    $sheet.hidden = false;
+    requestAnimationFrame(function () { requestAnimationFrame(function () { if (n === sheetN) $sheet.classList.add('on'); }); });
+  }
   function closeReport() {
-    $sheet.hidden = true; $sheet.innerHTML = ''; A.rep = null;
-    $sheet.removeAttribute('style');
-    document.body.classList.remove('modal-open');
-    if (A.dirty) softRender();
+    var n = ++sheetN;
+    A.rep = null;
+    $sheet.classList.remove('on');
+    clearTimeout(sheetT);
+    var done = function () {
+      if (n !== sheetN) return;
+      $sheet.hidden = true; $sheet.innerHTML = '';
+      $sheet.removeAttribute('style');
+      document.body.classList.remove('modal-open');
+      if (A.dirty) softRender();
+    };
+    if ($sheet.hidden) done(); else sheetT = setTimeout(done, 160);
   }
   async function sendReport() {
     var t = document.getElementById('rep-body');
