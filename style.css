@@ -351,13 +351,9 @@ mark{background:linear-gradient(transparent 56%,var(--hl) 56%);color:inherit;pad
   .en{font-size:1.12rem}
 }
 @media (prefers-reduced-motion:no-preference){
-  .flash,.s,.card{transition:background-color .15s ease}
-  .btn,.judge button,.done-btn,.reveal,.cont,.tb,.pn a,.pbar .back,.pbar .nv a,.deck-tools button{transition:transform .08s ease,box-shadow .08s ease}
+  .flash,.s,.card{transition:background-color .15s ease-out}
 }
-/* 0.9.0 움직임 줄이기를 켠 폰 — 블록 밖에 남은 움직임(알림 · 스위치 · 그림)도 멈춘다 */
-@media (prefers-reduced-motion:reduce){
-  .toast,.sw,.sw::after,.pic-box img,.picv-tip{transition:none}
-}
+/* 움직임 줄이기를 켠 폰 — 묶음은 파일 맨 끝에 있다(뒤에 오는 같은 무게의 규칙이 이기므로) */
 
 /* ════════ 앱 ════════ */
 
@@ -464,7 +460,7 @@ mark{background:linear-gradient(transparent 56%,var(--hl) 56%);color:inherit;pad
 .info div:last-child{border-bottom:0}
 .info dt{color:var(--muted);font-size:14px;font-weight:700}
 .info dd{margin:0;font-weight:800;overflow-wrap:anywhere}
-.pend{margin:0;color:var(--re);font-size:13.5px;font-weight:700}
+.pend{margin:0;color:var(--re);font-size:13.5px;font-weight:700;font-variant-numeric:tabular-nums}
 .ver{margin-top:22px;font-size:12.5px;font-weight:700;color:var(--faint);text-align:center}
 
 /* ---- 틀린 곳 알리기 ---- */
@@ -477,12 +473,18 @@ mark{background:linear-gradient(transparent 56%,var(--hl) 56%);color:inherit;pad
 .sheet-what{margin:0;font-size:13.5px;color:var(--muted);overflow-wrap:anywhere}
 .sheet-n{margin:0;font-size:12px;font-weight:700;color:var(--faint);text-align:right;font-variant-numeric:tabular-nums}
 .sheet-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+/* 261030 창은 툭 뜨지 않는다 — 바탕은 옅게 번지고 창은 6px 아래에서 올라온다(app.js showSheet 가 hidden 을 푼 뒤 두 그림 뒤에 on 을 붙이고,
+   닫을 때는 on 을 떼고 0.16초 뒤에 숨긴다). 번지는 동안은 눌리지 않는다 */
+.sheet:not(.on){pointer-events:none}
+.sheet-bg{opacity:0;transition:opacity .15s ease-out}
+.sheet-card{opacity:0;transform:translateY(6px);transition:opacity .15s ease-out,transform .15s ease-out}
+.sheet.on .sheet-bg,.sheet.on .sheet-card{opacity:1;transform:none}
 body.modal-open{overflow:hidden}
 
 /* ---- 알림 · 워터마크 ---- */
 .toast{position:fixed;left:0;right:0;margin:0 auto;bottom:calc(44px + env(safe-area-inset-bottom,0px));width:max-content;max-width:calc(100% - 32px);
   background:var(--inv);color:var(--on-inv);padding:10px 16px;border-radius:14px;font-size:14px;font-weight:700;line-height:1.45;z-index:70;box-shadow:var(--pop);
-  pointer-events:none;opacity:0;transform:translateY(12px);transition:opacity .2s ease,transform .2s ease}
+  pointer-events:none;opacity:0;transform:translateY(6px);transition:opacity .15s ease-out,transform .15s ease-out}
 .toast.on{opacity:1;transform:none}
 .toast:empty{display:none}
 /* 「이름 학생용」 — 0.9.0 글 뒤로 보낸다(z-index -1). 카드 · 글 위에 겹치지 않고 빈 바탕에서만 보인다(화면을 찍으면 그대로 찍힌다) */
@@ -494,13 +496,13 @@ body.modal-open{overflow:hidden}
 .a-head .page-h{margin:8px 0 0}
 .anav{padding-top:10px}
 .a-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}   /* 0.8.0 학생 관리 — 학교로 거르기 | 정렬 */
-.a-sum{margin:10px 0;font-size:13.5px;font-weight:700;color:var(--ink2);background:var(--yellow-wash);border:1px solid var(--yellow-line);border-radius:12px;padding:8px 12px}
+.a-sum{margin:10px 0;font-size:13.5px;font-weight:700;color:var(--ink2);font-variant-numeric:tabular-nums;background:var(--yellow-wash);border:1px solid var(--yellow-line);border-radius:12px;padding:8px 12px}
 .back-l{display:inline-flex;align-items:center;min-height:40px;font-weight:800;color:var(--coral-ink)}
 .scard{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:13px 14px;margin-top:10px;min-width:0;box-shadow:var(--shadow)}
 .scard-h{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
 .sname{font-weight:900;font-size:16px;color:var(--ink);letter-spacing:-.01em}
 a.sname{text-decoration:underline;text-underline-offset:4px;text-decoration-color:var(--coral-line);text-decoration-thickness:2px}
-.seen{margin-left:auto;font-size:12.5px;font-weight:600;color:var(--muted)}
+.seen{margin-left:auto;font-size:12.5px;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums}
 .seen.stale{color:var(--re);font-weight:800}
 .tagb{font-size:11.5px;font-weight:800;border-radius:999px;padding:1px 9px;background:var(--sunk2);color:var(--ink2);white-space:nowrap}
 .tagb.block{background:var(--re-wash);color:var(--re)}
@@ -786,6 +788,10 @@ html.picv-on,html.picv-on body{overflow:hidden;overscroll-behavior:none}
 .chip::after,.link-btn::after,.say::after,.tb::after,.deck-tools button::after,.listtoggle::after,.kcard .show::after,.rep::after,.bar-x::after,.btn.sm::after,
 .newbar button::after,.inst-btns button::after,.reset::after,.back-l::after,.pbar .back::after,.pbar .nv a::after{content:"";position:absolute;left:0;right:0;top:50%;height:44px;transform:translateY(-50%)}
 .sw::before{content:"";position:absolute;left:-4px;right:-4px;top:-6px;bottom:-6px}
+/* 261030 손가락 화면 — 44px 보다 좁은 칸(「접기」 글자 단추 · 이전/다음 동그라미 40px)은 옆으로도 44px 까지. 가운데를 맞춰 넓혀 이웃 칸과 겹치지 않는다 */
+@media (pointer:coarse){
+  .link-btn::after,.pbar .nv a::after{left:50%;right:auto;width:100%;min-width:44px;transform:translate(-50%,-50%)}
+}
 
 /* ════════ 0.11.0 — 디자인 개편 「클래식 모노 · 입체」(261019 기원T · 시안 1) ════════
    이름표(class) · data-act · href 는 그대로 두고 모양만 입힌다(검증 ③ E2E 가 이름표를 찾는다).
@@ -803,8 +809,9 @@ html.picv-on,html.picv-on body{overflow:hidden;overscroll-behavior:none}
 :focus-visible{outline:2px solid var(--coral-ink);outline-offset:3px}
 @media (prefers-reduced-motion:no-preference){
   .tb,.chip,.say,.pbar .back,.pbar .nv a,.pn a,.judge button,.done-btn,.btn,.reveal,.cont,.inst-btns button,.newbar button,.pic-tog,.anext,.reset,.kcard .show,
-  .seg button,.modebar button,.subj button,.authseg a,.atabs button,.tab,.pswitch a,.todo-re,.pcard,.sw,.sw::after{
-    transition:transform .14s cubic-bezier(.2,.8,.2,1),box-shadow .14s cubic-bezier(.2,.8,.2,1),background-color .18s ease,color .18s ease,filter .14s ease}
+  .seg button,.modebar button,.subj button,.authseg a,.atabs button,.tab,.pswitch a,.todo-re,.pcard,.sw,.sw::after,
+  .deck-tools button,.bar-x,.link-btn,.rep,.listtoggle,.back-l{
+    transition-property:transform,box-shadow,background-color,color,filter;transition-duration:.15s;transition-timing-function:ease-out}   /* 261030 누름 · 바뀜은 모두 0.15초 */
 }
 
 /* 돋은 단추(무채색) — 누르는 동안 안으로 들어간다 */
@@ -817,6 +824,10 @@ html.picv-on,html.picv-on body{overflow:hidden;overscroll-behavior:none}
 .btn:not([disabled]):active,.btn:not([disabled]):not(.ghost):active,.inst-btns .go:active,.newbar button:active{transform:translateY(1px);filter:brightness(.94);box-shadow:var(--sh-fill)}
 .reveal{border:0;background:var(--raise);box-shadow:var(--sh-raise);color:var(--coral-ink)}
 .reveal:active{transform:translateY(1px);box-shadow:var(--sh-press)}
+/* 261030 따로 선 단추 · 칩 · 글자 단추는 누르는 동안 96% 로 작아진다(그림자 · 밝기는 위 규칙 그대로).
+   한 줄을 다 쓰는 단추(.btn · 답 보기 · 다 봤어요 · 다음 · 이어 보기 · 이전/다음 지문 · 그림 풀이)와 파인 판에 붙은 칸 · 목록 줄은 줄이지 않는다 */
+.tb:active,.chip:active,.say:active,.pbar .back:active,.pbar .nv a:active,.inst-btns .go:active,.inst-btns .x:active,.reset:active,.kcard .show:active,
+.btn.sm:not([disabled]):active,.newbar button:active,.bar-x:active,.link-btn:active,.rep:active,.listtoggle:active,.back-l:active{transform:scale(.96)}
 /* 돋은 면 — 카드 · 묶음 · 알림 */
 .card,.grp,.acard,.notice,.endcard,.info,.scard,.glance,.auth .form,.pn a,.pic-tog,.gist,.inst,.newbar,.cram{
   border:0;background:var(--card-bg);box-shadow:var(--sh)}
@@ -878,7 +889,7 @@ html.picv-on,html.picv-on body{overflow:hidden;overscroll-behavior:none}
 .tr-k{grid-column:1;min-width:3.2em;font-size:15px;font-weight:700;white-space:nowrap}
 .tr-n{grid-column:2;font-size:15px;font-weight:500;color:var(--muted)}
 .tr-n b{font-weight:700;color:var(--ink)}
-.tr-d{grid-column:3;grid-row:1;justify-self:end;font-size:12.5px;font-weight:600;color:var(--coral-ink);background:var(--coral-wash);border-radius:999px;padding:5px 10px;white-space:nowrap}
+.tr-d{grid-column:3;grid-row:1;justify-self:end;font-size:12.5px;font-weight:600;color:var(--coral-ink);background:var(--coral-wash);border-radius:999px;padding:5px 10px;white-space:nowrap;font-variant-numeric:tabular-nums}
 @media (max-width:380px){
   .todo-re{padding-block:10px}
   .tr-d{grid-column:2 / 4;grid-row:2;justify-self:start}
@@ -991,8 +1002,9 @@ html.picv-on,html.picv-on body{overflow:hidden;overscroll-behavior:none}
 /* ---- 판정 두 칸 — 돋은 열쇠 · 고르면 채워지며 들어간다(누른 채로 남는다) ---- */
 .judge{gap:10px;margin-top:16px}
 .judge button,.judge button[data-v]{min-height:56px;border:0;border-radius:16px;background:var(--raise);box-shadow:var(--sh-raise);color:var(--ink);font-size:16.5px;font-weight:700}
-.judge button:active{transform:translateY(1px);box-shadow:var(--sh-press)}
+.judge button:active{transform:scale(.96);box-shadow:var(--sh-press)}
 .judge button[aria-pressed="true"],.judge button[data-v][aria-pressed="true"]{background:var(--on);color:var(--on-ink);box-shadow:var(--sh-onpress);transform:translateY(1px)}
+.judge button[aria-pressed="true"]:active,.judge button[data-v][aria-pressed="true"]:active{transform:scale(.96)}   /* 고른 칸도 누르는 동안은 작아진다 */
 .judge.big button{min-height:60px;font-size:17px}
 .done-btn{border-radius:16px}
 .done-btn[aria-pressed="true"]{background:var(--on);color:var(--on-ink);box-shadow:var(--sh-onpress)}
@@ -1072,3 +1084,14 @@ html.picv-on,html.picv-on body{overflow:hidden;overscroll-behavior:none}
 .stats div{border-radius:12px}
 .acts{border-top-style:solid}
 .prow{border-bottom-style:solid}
+
+/* ════════ 261030 — 매끄럽게 다듬기 ════════ */
+/* 제목은 줄이 바뀔 때 두 줄 길이를 고르게(본문은 맨 위 body 의 keep-all 그대로) */
+.page-h,.sec-h,.ah,.grp-h,.blk>h3,.notice b{text-wrap:balance}
+/* 움직임 줄이기를 켠 폰 — 전환과 누를 때 작아지는 것을 끈다. 0.9.0 때는 이 묶음이 알림 · 스위치 · 그림 규칙보다 앞에 있어 덮였다 — 맨 끝에 둔다 */
+@media (prefers-reduced-motion:reduce){
+  .toast,.sw,.sw::after,.pic-box img,.picv-tip,.sheet-bg,.sheet-card{transition:none}
+  .tb:active,.chip:active,.say:active,.pbar .back:active,.pbar .nv a:active,.inst-btns .go:active,.inst-btns .x:active,.reset:active,.kcard .show:active,
+  .btn.sm:not([disabled]):active,.newbar button:active,.bar-x:active,.link-btn:active,.rep:active,.listtoggle:active,.back-l:active,.judge button:active{transform:none}
+  .judge button[aria-pressed="true"]:active,.judge button[data-v][aria-pressed="true"]:active{transform:translateY(1px)}
+}
