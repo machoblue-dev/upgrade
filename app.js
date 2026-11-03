@@ -290,6 +290,9 @@
     if (intro.on === 0) {
       if (calm()) { intro.on = 2; return; }
       intro.on = 1; intro.t0 = performance.now();
+      /* 남은 날 숫자가 1.9배에서 박히는 동안 화면 오른쪽 밖으로 커진다 — 도는 동안은 옆으로 밀리지 않게 자른다(카드 넘기기 m-fly 와 같다) */
+      document.documentElement.classList.add('m-intro');
+      setTimeout(function () { document.documentElement.classList.remove('m-intro'); }, 4000);
     }
     if (intro.on !== 1) return;
     var t = performance.now() - intro.t0;

@@ -1130,6 +1130,8 @@ html.picv-on,html.picv-on body{overflow:hidden;overscroll-behavior:none}
 .m-nope{pointer-events:none;animation:nope3 .3s cubic-bezier(.55,0,.75,.2) forwards}
 .m-in{animation:in3 .55s cubic-bezier(.2,.8,.2,1) both}
 html.m-fly{overflow-x:clip}
+/* 첫 화면 열기 동안 — 남은 날 숫자가 박히며 오른쪽 밖으로 커진다. html 에 걸면 화면 전체로 옮겨 가 문서 폭이 그대로라 앱 상자에서 자른다 */
+html.m-intro .app{overflow-x:clip}
 
 /* ---- 뜻 · 답 열기 — 가려 둔 칸이 보이기 시작할 때(숨김이 풀리거나 가림이 걷힐 때) 작고 흐릿한 데서 커지며 또렷해진다 ---- */
 .kcard .en-line,.card .ans,.under .sub-ko,.whint,.flash .back,.sents[data-mode="en"] .s.open .s-ko,.sents[data-mode="ko"] .s.open .s-en,.wl .m:not(.cover){
