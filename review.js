@@ -1026,6 +1026,15 @@ var Review = (function () {
     if (!msg && prev === 're') msg = '다시 볼 것에서 뺐어요 · 남은 ' + counts()[tab].re + '개';
     if (msg) C.env.toast(msg);
   }
+  /* 0.12 체크 움직임 — 진도가 오른 순간만 누른 단추에서 고리 · +1(「다시」 · 지우기는 안 움직인다). 그 자료가 그 순간 다 찼으면 조각까지.
+     돌려주는 값 — 진도가 올랐나(올랐으면 그린 뒤 popTab 으로 탭 숫자를 튀긴다) */
+  function cheer(b, tab, prev, now) {
+    if (prev === now || now !== goodOf(tab)) return false;
+    var fx = C.env.fx, c = counts()[tab];
+    if (fx) { fx.check(b); if (c.N && c.n === c.N) fx.burst(b, tab); }
+    return true;
+  }
+  function popTab() { if (C.env.fx) C.env.fx.pop(document.querySelector('.tabs .tab[aria-selected="true"] i')); }
 
   /* ---------- 그리기 ---------- */
   function renderTab(tab) {
@@ -1085,6 +1094,7 @@ var Review = (function () {
         setm([[key, now]]);
         b.setAttribute('aria-pressed', now === 'done'); b.textContent = now === 'done' ? '다 봤어요 · 다시 누르면 취소' : '이 지문 다 봤어요';
         after('jimun', key, cur, now);
+        cheer(b, 'jimun', cur, now);
         return true;
       case 'kshow':
         card = b.closest('.kcard'); card.querySelector('.en-line').hidden = false; b.hidden = true; return true;
@@ -1095,7 +1105,7 @@ var Review = (function () {
         setm([[key, now]]);
         setJudge(card, now === 'none' ? '' : now, '외움');
         after('haeksim', key, cur, now);
-        refreshTabs(); return true;
+        refreshTabs(); if (cheer(b, 'haeksim', cur, now)) popTab(); return true;
       case 'wko':
         var ko = b.parentNode.querySelector('.sub-ko'); ko.hidden = !ko.hidden; b.textContent = ko.hidden ? '해석 보기' : '해석 접기'; return true;
       case 'wbox':
@@ -1113,16 +1123,22 @@ var Review = (function () {
         setm([[key, now]]);
         setJudge(card, now === 'none' ? '' : now, act === 'wj' ? '맞음' : '알겠음');
         after(act === 'wj' ? 'seosul' : 'eobeop', key, cur, now);
-        refreshTabs(); return true;
+        refreshTabs(); if (cheer(b, act === 'wj' ? 'seosul' : 'eobeop', cur, now)) popTab(); return true;
       case 'wm':
         U().wm = b.getAttribute('data-v') === 'd2w' ? 'd2w' : 'w2m'; saveUi(); return 'render';
       case 'dflip':
+        if (C.env.fx && C.env.fx.busy()) return true;   // 0.12 카드가 넘어가는 동안은 뒤집지 않는다
         deck.open = !deck.open; redrawDeck(); return true;
       case 'dj':
+        if (C.env.fx && C.env.fx.busy()) return true;   // 0.12 카드가 넘어가는 동안은 다음 넘기기를 막는다(연타로 꼬이지 않게)
         cur = deck.list[deck.i]; v = b.getAttribute('data-v');
         var was = cur ? st(cur.key) : '';
         if (cur && was !== v) { setm([[cur.key, v]]); after('dan', cur.key, was, v); }
-        deck.i++; deck.open = false; redrawDeck(); refreshTabs(); return true;
+        var up = cur ? cheer(b, 'dan', was, v) : false;
+        deck.i++; deck.open = false;
+        /* 0.12 「알아요」는 끝낸 카드가 기울며 왼쪽으로, 「몰라요」는 오른쪽으로 날아가고 다음 카드가 튀어 들어온다 */
+        if (C.env.fx) C.env.fx.swap(v === 'ok' ? 'out' : 'nope', redrawDeck); else redrawDeck();
+        refreshTabs(); if (up) popTab(); return true;
       case 'dagain':
         deck.key = ''; ensureDeck(); redrawDeck(); return true;
       case 'dre':
