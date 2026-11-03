@@ -196,6 +196,8 @@
     requestAnimationFrame(function () {
       requestAnimationFrame(function () {
         if (n !== toastN) return;
+        /* 0.12 알림은 아래에서 튀어 오른다(style.css t3) — 떠 있는 동안 새 알림이 오면 움직임을 처음부터 다시 돌린다 */
+        if ($toast.classList.contains('on')) { $toast.classList.remove('on'); void $toast.offsetWidth; }
         $toast.classList.add('on');
         toastT = setTimeout(function () { $toast.classList.remove('on'); }, 2600);
       });
@@ -207,6 +209,175 @@
     A.offline = off;
     drawBars();
   }
+
+  /* ---------- 움직임(0.12 「크게」 · 261103 기원T가 세 단계 시안 가운데 골랐다) ----------
+     모양은 style.css 맨 끝 「0.12」 절이 맡고, 여기서는 이름표(m-…)를 붙였다 걷는다. 기본 상태는 보이는 상태다 — 이름표가 안 붙으면 움직임만 빠진다.
+     · 첫 화면 열기 — 앱을 열고 처음 그린 첫 화면에서 한 번만(덩어리마다 80ms · 남은 날 숫자 박기 · 진도 막대 차오르기 · 숫자 세기).
+       도는 동안 뒤에서 받은 것으로 다시 그리면 지난 시간만큼 앞당겨 이어 돈다. 다른 화면을 먼저 보면 안 돈다
+     · 체크하는 순간 — 고리 · +1 · 탭 숫자 튀기기 · 단어 카드 넘기기(review.js 가 env.fx 로 부른다)
+     · 자료 하나를 다 끝냈을 때 — 그 자리에서 조각이 흩어지고, 다음에 첫 화면을 그리면 그 진도 줄이 한 번 빛난다
+     움직임 줄이기를 켠 폰은 이름표를 안 붙이고 바로 그린다(체크 표시 · 숫자는 그대로 바뀐다) */
+  function calm() { try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; } }
+  function fxAt(el) { var r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, top: r.top }; }
+  /* 화면 위에 잠깐 띄웠다 지우는 조각(고리 · +1) — 누르기를 막지 않고 읽는 기계는 건너뛴다 */
+  function fxFloat(cls, x, y, text, life) {
+    var d = document.createElement('div');
+    d.className = cls;
+    d.setAttribute('aria-hidden', 'true');
+    d.style.left = x + 'px'; d.style.top = y + 'px';
+    if (text) d.textContent = text;
+    document.body.appendChild(d);
+    setTimeout(function () { d.remove(); }, life);
+  }
+  /* 이름표를 붙여 한 번 돌리고 끝나면 걷는다 — 남아 있으면 뒤의 다른 움직임(누를 때 작아지기 등)을 덮는다.
+     t 는 첫 화면 열기가 시작된 뒤 지난 시간 · 이미 끝났을 자리는 안 붙인다 */
+  function fxMark(el, cls, delay, dur, t) {
+    if (t >= delay + dur) return;
+    el.style.setProperty('--md', (delay - t) + 'ms');
+    el.classList.add(cls);
+    setTimeout(function () { el.classList.remove(cls); el.style.removeProperty('--md'); }, delay + dur - t + 40);
+  }
+  /* 숫자 세기 — 0부터 제 값까지(끝으로 갈수록 느리게). 시작 시각을 첫 화면 열기에 묶어 다시 그려도 이어 센다 */
+  function countUp(el, delay, dur) {
+    var to = parseInt(el.textContent, 10), start = intro.t0 + delay;
+    if (!(to > 0) || performance.now() >= start + dur) return;
+    el.textContent = '0';
+    (function step(now) {
+      if (!el.isConnected) return;
+      var p = Math.max(0, Math.min(1, (now - start) / dur));
+      el.textContent = String(Math.round(to * (1 - Math.pow(1 - p, 3))));
+      if (p < 1) requestAnimationFrame(step);
+    })(performance.now());
+  }
+
+  /* 첫 화면 열기 — on 0 아직 · 1 도는 중 · 2 끝(또는 안 돈다) */
+  var intro = { on: 0, t0: 0 };
+  var INTRO = '.topbar,.subj,.newbar,.hero-main,.hero-box,.cram,.endcard,.todo,.prog,.glance,.inst,.sig';
+  function introApply(t) {
+    var progD = -1;
+    Array.prototype.forEach.call($app.querySelectorAll(INTRO), function (el, i) {
+      var d = i * 80;
+      fxMark(el, 'm-en', d, 700, t);
+      var big = el.classList.contains('hero-box') && el.querySelector('.dbox .n');   // 남은 날 · 「끝」 — 그 카드보다 0.16초 뒤에 박힌다
+      if (big) fxMark(big, 'm-slam', d + 160, 750, t);
+      if (el.classList.contains('prog')) progD = d;
+    });
+    if (progD < 0) return;
+    /* 진도 — 막대는 줄마다 90ms 늦춰 차오르고(0.95초) 빛이 한 번 훑는다(0.8초). 숫자는 막대와 함께 센다 */
+    var prog = $app.querySelector('.prog'), tot = prog.querySelector('.prog-t b');
+    if (tot) countUp(tot, progD + 300, 1200);
+    Array.prototype.forEach.call(prog.querySelectorAll('.pcard'), function (row, i) {
+      var d = progD + 300 + i * 90, f = row.querySelector('.pl-fill'), nb = row.querySelector('.pc-n b');
+      if (f && +row.getAttribute('data-n') > 0) fxMark(f, 'm-fill', d, 950 + 800, t);
+      if (nb) countUp(nb, d, 1100);
+    });
+  }
+  /* 다 끝낸 자료 — 다음에 그리는 첫 화면에서 그 진도 줄이 한 번 빛난다 */
+  var glowNext = {};
+  function glowRows() {
+    Object.keys(glowNext).forEach(function (tab) {
+      delete glowNext[tab];
+      var row = $app.querySelector('.pcard[data-tab="' + tab + '"]');
+      if (!row || row.getAttribute('data-n') !== row.getAttribute('data-total')) return;
+      row.classList.add('m-glow');
+      setTimeout(function () { row.classList.remove('m-glow'); }, 950);
+    });
+  }
+  function homeFx(h) {
+    if (h !== 'home') { if (intro.on === 0) intro.on = 2; return; }   // 다른 화면을 먼저 봤으면 첫 화면 열기는 안 돈다
+    if (!$app.querySelector('.hero')) return;                          // 아직 받는 중 — 내용이 선 첫 화면을 기다린다
+    glowRows();
+    if (intro.on === 0) {
+      if (calm()) { intro.on = 2; return; }
+      intro.on = 1; intro.t0 = performance.now();
+    }
+    if (intro.on !== 1) return;
+    var t = performance.now() - intro.t0;
+    if (t > 4000) { intro.on = 2; return; }
+    introApply(t);
+  }
+
+  /* 단어 카드 넘기기 — 끝낸 카드가 날아가는 동안(0.3초)과 다음 카드가 들어오는 동안(0.55초)은 다음 넘기기를 막는다 */
+  var flyT = 0, flyEnd = 0;
+  function deckSwap(dir, redraw) {
+    var card = function () { return document.querySelector('#deck > .flash-wrap, #deck > .flash'); }, old = card();
+    if (calm() || !old) { redraw(); return; }
+    flyEnd = Date.now() + 850;
+    document.documentElement.classList.add('m-fly');
+    old.classList.add(dir === 'nope' ? 'm-nope' : 'm-out');
+    clearTimeout(flyT);
+    flyT = setTimeout(function () {
+      redraw();
+      var nu = card();
+      if (nu) nu.classList.add('m-in');
+      flyT = setTimeout(function () {
+        document.documentElement.classList.remove('m-fly');
+        var x = document.querySelector('#deck .m-in');
+        if (x) x.classList.remove('m-in');
+      }, 550);
+    }, 300);
+  }
+
+  /* 조각 — 캔버스 한 장에 70개를 그 자리에서 사방으로(속도 3~10 · 아래로 당기는 힘 .32 · 1.2초 동안 흐려진다). 빠르기는 60분의 1초 걸음으로 센다 */
+  function sparks(x, y) {
+    var cv = document.createElement('canvas'), g = cv.getContext && cv.getContext('2d');
+    if (!g) return;
+    var W = window.innerWidth, H = window.innerHeight, dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var cs = getComputedStyle(document.documentElement);
+    var cols = ['--spark-a', '--spark-b', '--spark-c'].map(function (k) { return cs.getPropertyValue(k).trim() || '#0B63CE'; });
+    cv.className = 'fx-sparks';
+    cv.setAttribute('aria-hidden', 'true');
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    cv.style.width = W + 'px'; cv.style.height = H + 'px';
+    g.scale(dpr, dpr);
+    document.body.appendChild(cv);
+    var P = [];
+    for (var i = 0; i < 70; i++) {
+      var a = Math.random() * Math.PI * 2, s = 3 + Math.random() * 7;
+      P.push({ x: x, y: y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, r: Math.random() * 6.28, vr: (Math.random() - 0.5) * 0.4,
+        w: 5 + Math.random() * 5, h: 3 + Math.random() * 4, c: cols[i % 3] });
+    }
+    var t0 = 0, last = 0;
+    function step(now) {
+      if (!t0) t0 = last = now;
+      var k = Math.min((now - last) / 16.67, 3), age = now - t0;
+      last = now;
+      g.clearRect(0, 0, W, H);
+      if (age >= 1200 || !cv.isConnected) { cv.remove(); return; }
+      g.globalAlpha = 1 - age / 1200;
+      P.forEach(function (p) {
+        p.vy += 0.32 * k; p.x += p.vx * k; p.y += p.vy * k; p.r += p.vr * k;
+        g.save(); g.translate(p.x, p.y); g.rotate(p.r); g.fillStyle = p.c; g.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); g.restore();
+      });
+      requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+    setTimeout(function () { cv.remove(); }, 2000);   // 화면이 뒤에 가 그림이 멈춰도 캔버스를 남기지 않는다
+  }
+
+  /* review.js 에 넘기는 움직임 — 판 문맥(env.fx)으로 받는다 */
+  var Fx = {
+    check: function (b) {     // 진도가 오른 순간 — 누른 단추에서 파란 고리가 퍼지고 +1 이 튀어 오른다
+      if (calm() || !b || !b.isConnected) return;
+      var c = fxAt(b);
+      fxFloat('fx-ring', c.x, c.y, '', 650);
+      fxFloat('fx-plus', c.x, c.top - 22, '+1', 1100);
+    },
+    pop: function (el) {      // 바뀐 숫자가 커졌다 돌아온다
+      if (calm() || !el) return;
+      el.classList.remove('m-pop');
+      void el.offsetWidth;
+      el.classList.add('m-pop');
+      setTimeout(function () { el.classList.remove('m-pop'); }, 550);
+    },
+    burst: function (b, tab) { // 자료 하나가 그 순간 다 찼다
+      if (calm()) return;
+      if (tab) glowNext[tab] = 1;
+      if (b && b.isConnected) { var c = fxAt(b); sparks(c.x, c.y); }
+    },
+    swap: deckSwap,
+    busy: function () { return Date.now() < flyEnd; }
+  };
 
   /* ---------- 머리(로그인 뒤) ---------- */
   function topHTML(noSubj) {
@@ -455,17 +626,17 @@
       Review.setup(pv.data, {
         mark: function (k) { return pv.marks[k] || ''; },
         setMarks: function (pairs) { pairs.forEach(function (x) { if (x[1] === 'none') delete pv.marks[x[0]]; else pv.marks[x[0]] = x[1]; }); },
-        ui: pv.ui, saveUi: noop, readonly: false, report: null, cycle: pv.meta.cycle, toast: toast
+        ui: pv.ui, saveUi: noop, readonly: false, report: null, cycle: pv.meta.cycle, toast: toast, fx: Fx
       });
       return;
     }
     if (!A.pack) { Review.setup(null, null); return; }
-    /* 0.9.0 marks — 누른 시각이 든 진도 사본(오늘 · 이번 주 · 다시 볼 차례를 센다) · toast — 누른 뒤 한 줄 알림 · studyMin — 오늘 공부한 분 */
+    /* 0.9.0 marks — 누른 시각이 든 진도 사본(오늘 · 이번 주 · 다시 볼 차례를 센다) · toast — 누른 뒤 한 줄 알림 · studyMin — 오늘 공부한 분 · 0.12 fx — 체크 움직임 */
     Review.setup(A.pack.data, {
       mark: Sync.get,
       setMarks: function (pairs) { Sync.setMany(pairs).catch(noop); },
       ui: A.ui, saveUi: saveUi, readonly: false, report: openReport, cycle: A.pack.cycle,
-      marks: Sync.marks, toast: toast, studyMin: todayMin
+      marks: Sync.marks, toast: toast, studyMin: todayMin, fx: Fx
     });
   }
   function clearReview() { reviewFor = ''; Review.setup(null, null); }
@@ -776,6 +947,7 @@
       if (r && r.view === 't' && A.prevRoute && A.prevRoute.view === 'p' && A.listScroll[r.tab] != null) window.scrollTo(0, A.listScroll[r.tab]);
       else window.scrollTo(0, 0);
     }
+    homeFx(h);                                             // 0.12 첫 화면 열기(처음 한 번) · 다 끝낸 자료 진도 줄 빛내기
     A.prevRoute = r ? r : { view: h };
   }
 

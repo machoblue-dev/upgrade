@@ -55,6 +55,8 @@
   --sh-on:0 1px 1px rgba(0,0,0,.18),0 4px 10px -2px rgba(28,28,30,.35),inset 0 1px 0 rgba(255,255,255,.16);
   --sh-onpress:inset 0 2px 6px rgba(0,0,0,.55),inset 0 0 0 1px rgba(0,0,0,.4);
   --knob:linear-gradient(180deg,#FFFFFF 0%,#F1F1F4 100%);
+  /* 0.12 움직임 — 다 끝냈을 때 조각 셋(파랑 · 글자색 · 옅은 파랑) · 진도 막대를 훑는 빛 */
+  --spark-a:#0B63CE; --spark-b:#1C1C1E; --spark-c:#8FB8EE; --sweep:rgba(255,255,255,.75);
   --sans:"Pretendard",-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;
   --serif:"Literata",Georgia,"Times New Roman","Pretendard","Apple SD Gothic Neo","Malgun Gothic",serif;   /* 0.9.0 영어 글상자 속 한글은 시스템 명조 대신 Pretendard 로 · 0.11.0 두 화면 모두 Literata */
   --mono:"Pretendard",-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
@@ -91,6 +93,7 @@ html[data-theme="dark"]{
   --sh-on:0 1px 2px rgba(0,0,0,.6),0 4px 12px -2px rgba(0,0,0,.5),inset 0 1px 0 #FFFFFF;
   --sh-onpress:inset 0 2px 6px rgba(0,0,0,.35),inset 0 0 0 1px rgba(0,0,0,.12);
   --knob:linear-gradient(180deg,#F5F5F7 0%,#D9D9DE 100%);
+  --spark-a:#4C9AFF; --spark-b:#F5F5F7; --spark-c:#A9CCFF; --sweep:rgba(255,255,255,.75);
   color-scheme:dark;
 }
 html,body{background:var(--bg)}
@@ -1088,10 +1091,67 @@ html.picv-on,html.picv-on body{overflow:hidden;overscroll-behavior:none}
 /* ════════ 261030 — 매끄럽게 다듬기 ════════ */
 /* 제목은 줄이 바뀔 때 두 줄 길이를 고르게(본문은 맨 위 body 의 keep-all 그대로) */
 .page-h,.sec-h,.ah,.grp-h,.blk>h3,.notice b{text-wrap:balance}
+
+/* ════════ 0.12 — 움직임 「크게」(261103 기원T · 조금 · 중간 · 크게 세 단계 시안 가운데 「크게」) ════════
+   색 · 글꼴 · 배치 · 문구는 그대로 두고 움직임만 얹는다. 기본 상태는 보이는 상태이고, 이름표(m-… · fx-…)는 app.js 가 붙였다 걷는다 —
+   스크립트가 안 돌면 이름표가 안 붙어 움직임만 빠진다. transform · opacity · filter 만 움직인다(폰이 배치를 다시 재지 않게).
+   움직임 줄이기를 켠 폰은 맨 끝 묶음이 모두 끈다 */
+@keyframes en3{0%{opacity:0;transform:translateY(42px) scale(.92)}55%{opacity:1;transform:translateY(-7px) scale(1.015)}100%{transform:none}}
+@keyframes slam{0%{opacity:0;transform:scale(1.9);filter:blur(10px)}55%{opacity:1;transform:scale(.93);filter:blur(0)}78%{transform:scale(1.03)}100%{transform:none}}
+@keyframes fill3{0%{transform:scaleX(0)}100%{transform:none}}
+@keyframes sweep3{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+@keyframes ring3{0%{opacity:.9;transform:scale(.4)}100%{opacity:0;transform:scale(3.2)}}
+@keyframes plus3{0%{opacity:0;transform:translateY(10px) scale(.6)}25%{opacity:1;transform:translateY(-8px) scale(1.5)}100%{opacity:0;transform:translateY(-54px) scale(1.1)}}
+@keyframes pop{0%{transform:scale(1)}35%{transform:scale(1.45);color:var(--coral-ink)}100%{transform:scale(1)}}
+@keyframes out3{to{opacity:0;transform:translateX(-115%) rotate(-12deg)}}
+@keyframes nope3{to{opacity:0;transform:translateX(115%) rotate(12deg)}}
+@keyframes in3{0%{opacity:0;transform:translateY(26px) scale(.82)}60%{opacity:1;transform:translateY(-4px) scale(1.03)}100%{transform:none}}
+@keyframes rv3{0%{opacity:0;transform:scale(.7);filter:blur(6px)}60%{opacity:1;transform:scale(1.08);filter:blur(0)}100%{transform:none}}
+@keyframes glow3{0%,100%{opacity:0}50%{opacity:1}}
+@keyframes t3{0%{opacity:0;transform:translateY(70px) scale(.7)}14%{opacity:1;transform:translateY(-8px) scale(1.06)}22%{transform:none}85%{opacity:1}100%{opacity:0;transform:translateY(10px)}}
+
+/* ---- 첫 화면 열기 — 덩어리마다 80ms 늦춰 아래에서 튀어 올랐다 제자리로. 남은 날 숫자는 크게 박힌다
+   (--md 는 app.js 가 적는 늦춤 · 도는 동안 다시 그리면 지난 만큼 음수로 앞당긴다) ---- */
+.m-en{animation:en3 .7s cubic-bezier(.22,.9,.3,1) var(--md,0ms) both}
+.m-slam{transform-origin:left bottom;animation:slam .75s cubic-bezier(.2,.8,.2,1) var(--md,0ms) both}
+/* 진도 막대 — 0에서 제 값까지 차오르며 끝에서 튕기고(넘친 끝은 파인 막대가 가린다), 다 차면 빛이 한 번 훑는다. 너비(width)는 그대로 두고 늘이기만 한다 */
+.pl-fill.m-fill{transform-origin:left center;overflow:hidden;animation:fill3 .95s cubic-bezier(.34,1.5,.64,1) var(--md,0ms) both}
+.pl-fill.m-fill::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,var(--sweep) 50%,transparent 70%);
+  transform:translateX(-100%);animation:sweep3 .8s ease-in-out calc(var(--md,0ms) + .95s) both}
+
+/* ---- 체크하는 순간 — 누른 단추에서 고리가 퍼지고 +1 이 튀어 오른다(app.js 가 띄웠다 지운다) · 탭 숫자가 커졌다 돌아온다 ---- */
+.fx-ring{position:fixed;width:40px;height:40px;margin:-20px 0 0 -20px;border:3px solid var(--coral-ink);border-radius:50%;pointer-events:none;z-index:80;
+  animation:ring3 .55s ease-out forwards}
+.fx-plus{position:fixed;width:80px;margin-left:-40px;text-align:center;font-size:22px;font-weight:800;line-height:1;color:var(--coral-ink);
+  font-variant-numeric:tabular-nums;pointer-events:none;z-index:80;animation:plus3 1s cubic-bezier(.2,.8,.2,1) forwards}
+.m-pop{animation:pop .5s cubic-bezier(.2,.8,.2,1)}
+/* 단어 카드 — 「알아요」는 기울며 왼쪽으로, 「몰라요」는 오른쪽으로 날아가고 다음 카드가 튀어 들어온다. 날아가는 동안은 화면이 옆으로 늘지 않게 자른다 */
+.m-out{pointer-events:none;animation:out3 .3s cubic-bezier(.55,0,.75,.2) forwards}
+.m-nope{pointer-events:none;animation:nope3 .3s cubic-bezier(.55,0,.75,.2) forwards}
+.m-in{animation:in3 .55s cubic-bezier(.2,.8,.2,1) both}
+html.m-fly{overflow-x:clip}
+
+/* ---- 뜻 · 답 열기 — 가려 둔 칸이 보이기 시작할 때(숨김이 풀리거나 가림이 걷힐 때) 작고 흐릿한 데서 커지며 또렷해진다 ---- */
+.kcard .en-line,.card .ans,.under .sub-ko,.whint,.flash .back,.sents[data-mode="en"] .s.open .s-ko,.sents[data-mode="ko"] .s.open .s-en,.wl .m:not(.cover){
+  transform-origin:left center;animation:rv3 .45s cubic-bezier(.2,.8,.2,1)}
+.wl .m:not(.cover){transform-origin:right center}   /* 낱말 목록의 뜻은 오른쪽에 붙어 있다 */
+
+/* ---- 자료 하나를 다 끝냈을 때 — 조각은 app.js 가 캔버스 한 장에 그린다 · 다음 첫 화면에서 그 진도 줄에 옅은 파랑이 한 번 차올랐다 빠진다 ---- */
+.fx-sparks{position:fixed;left:0;top:0;pointer-events:none;z-index:90}
+.pcard.m-glow{isolation:isolate}
+.pcard.m-glow::after{content:"";position:absolute;inset:0;z-index:-1;background:var(--coral-wash);pointer-events:none;animation:glow3 .9s ease-in-out both}
+
+/* ---- 알림 — 아래에서 튀어 올라 살짝 커졌다 자리 잡고, 끝에 흐려지며 내려간다(가운데 맞춤은 margin 이 하므로 가로로는 안 옮긴다) ---- */
+.toast.on{animation:t3 2.6s cubic-bezier(.2,.8,.2,1) both}
+
 /* 움직임 줄이기를 켠 폰 — 전환과 누를 때 작아지는 것을 끈다. 0.9.0 때는 이 묶음이 알림 · 스위치 · 그림 규칙보다 앞에 있어 덮였다 — 맨 끝에 둔다 */
 @media (prefers-reduced-motion:reduce){
   .toast,.sw,.sw::after,.pic-box img,.picv-tip,.sheet-bg,.sheet-card{transition:none}
   .tb:active,.chip:active,.say:active,.pbar .back:active,.pbar .nv a:active,.inst-btns .go:active,.inst-btns .x:active,.reset:active,.kcard .show:active,
   .btn.sm:not([disabled]):active,.newbar button:active,.bar-x:active,.link-btn:active,.rep:active,.listtoggle:active,.back-l:active,.judge button:active{transform:none}
   .judge button[aria-pressed="true"]:active,.judge button[data-v][aria-pressed="true"]:active{transform:translateY(1px)}
+  /* 0.12 움직임 — 튀어 오르기 · 날아가기 · 박히기 · 조각 · 고리 · 열기 · 빛나기를 끈다(체크 표시와 숫자는 바로 바뀐다 · app.js 도 이름표를 안 붙인다) */
+  .m-en,.m-slam,.pl-fill.m-fill,.pl-fill.m-fill::after,.m-pop,.m-out,.m-nope,.m-in,.pcard.m-glow::after,.toast.on,
+  .kcard .en-line,.card .ans,.under .sub-ko,.whint,.flash .back,.sents[data-mode="en"] .s.open .s-ko,.sents[data-mode="ko"] .s.open .s-en,.wl .m:not(.cover){animation:none}
+  .fx-ring,.fx-plus,.fx-sparks{display:none}
 }
