@@ -9,7 +9,8 @@
    · 0.3.0(보카꾹에서 가져온 것) — 어두운 화면 기본 · 밝은 화면 스위치 · 홈 화면에 아이콘 저장(설치 창 · 안내 창 · 첫 화면 카드 · sw.js) ·
      카톡 띠의 「다른 브라우저로 열기」 · 내 정보 「지금 보내기」 · 영어 발음 듣기(단어 카드 · 핵심 문장 · 지문 문장)
    · 0.9.0 첫 화면 차례 — 머리 카드 → 시험 직전 · 시험 끝 칸 → 다음 할 일(이어서 보기 · 탭마다 다시 볼 것) → 진도 → 시험 한눈에(접힘) → 아이콘 저장 카드 ·
-     분석 · The Concise · 출제 예상 화면에서는 과목 줄을 안 세운다 · 오늘 공부한 분을 이 폰에 날마다 쌓는다(머리 카드) */
+     분석 · The Concise · 출제 예상 화면에서는 과목 줄을 안 세운다 · 오늘 공부한 분을 이 폰에 날마다 쌓는다(머리 카드)
+   · 0.13.0 선생님 쪽지 — 아직 확인 안 한 쪽지를 첫 화면 맨 위에 카드로 · 「확인했어요」로 접는다 · 내 정보 「받은 쪽지」에서 다시 본다 */
 (function () {
   'use strict';
   var $app = document.getElementById('app');
@@ -252,7 +253,7 @@
 
   /* 첫 화면 열기 — on 0 아직 · 1 도는 중 · 2 끝(또는 안 돈다) */
   var intro = { on: 0, t0: 0 };
-  var INTRO = '.topbar,.subj,.newbar,.hero-main,.hero-box,.cram,.endcard,.todo,.prog,.glance,.inst,.sig';
+  var INTRO = '.topbar,.subj,.notes,.newbar,.hero-main,.hero-box,.cram,.endcard,.todo,.prog,.glance,.inst,.sig';
   function introApply(t) {
     var progD = -1;
     Array.prototype.forEach.call($app.querySelectorAll(INTRO), function (el, i) {
@@ -513,6 +514,7 @@
     var sc = await Store.get('schools');
     if (Array.isArray(sc) && sc.length) { A.schools = sc; mapSchools(); }
     await Sync.openUser(id);
+    await notesOpen(id);                                  // 받아 둔 쪽지(0.13.0)
     A.loading = true;
     A.hasLive = null;
     if (A.profile) await choose(A.ui.subject, false);    // 받아 둔 것으로 먼저 그린다
@@ -539,6 +541,7 @@
     } catch (e) { /* 받아 둔 목록을 쓴다 */ }
     if (A.profile) await choose(A.ui.subject, true);
     else { A.pack = null; setupReview(); }
+    await notesPull();
     var wasLoading = A.loading;
     A.loading = false;
     if (wasLoading || sig() !== before) softRender();
@@ -549,7 +552,96 @@
   function sig() {
     var p = A.profile || {};
     return [p.id, p.name, p.school, p.role, p.blocked, A.noProfile, A.pack ? A.pack.hash + A.pack.cycle : '-', A.subjects.join(','),
-      A.subject, A.banner, A.hasLive, JSON.stringify(Sync.marks())].join('|');
+      A.subject, A.banner, A.hasLive, JSON.stringify(Sync.marks()), notesSig()].join('|');
+  }
+
+  /* ---------- 선생님 쪽지(0.13.0 · 서버\261104_UPGRADE_쪽지.sql) ----------
+     학생 계정만 받는다(관리자 · 미리보기 · 막힘 제외). 열 때와 화면으로 돌아올 때 받고 폰에도 사본을 둔다(끊겨도 보인다).
+     「확인했어요」를 누르면 그 자리에서 접고 서버에 읽음을 적는다. 못 보낸 읽음은 폰에 들고 있다가 다음에 받을 때 함께 보낸다.
+     서버에 쪽지 표가 없으면(명령문을 아직 안 돌린 서버 · 404) 이 화면에서는 더 묻지 않는다 */
+  var N = { uid: '', list: [], read: {}, pend: [], off: false };
+  function notesOn() {
+    var p = A.profile;
+    return !N.off && !A.preview && !A.noProfile && !!(uid() && N.uid === uid() && p && p.role === 'student' && !p.blocked);
+  }
+  async function notesOpen(id) {
+    N.uid = id || ''; N.list = []; N.read = {}; N.pend = [];
+    if (!id) return;
+    var s = await Store.get('notes:' + id);
+    if (!s || typeof s !== 'object' || N.uid !== id) return;
+    if (Array.isArray(s.list)) N.list = s.list;
+    if (Array.isArray(s.read)) s.read.forEach(function (x) { N.read[x] = 1; });
+    if (Array.isArray(s.pend)) N.pend = s.pend.filter(function (x) { return typeof x === 'number'; });
+  }
+  function notesSave() {
+    if (!N.uid) return;
+    Store.set('notes:' + N.uid, { list: N.list, read: Object.keys(N.read).map(Number), pend: N.pend }).catch(noop);
+  }
+  function notesSig() { return N.uid + ':' + (notesOn() ? N.list.map(function (n) { return n.id + (N.read[n.id] ? 'r' : ''); }).join(',') : '-'); }
+  function noteGone(e) { return !!e && (e.status === 404 || e.code === 'PGRST205' || e.code === '42P01'); }
+  /* 못 보낸 읽음 보내기 — 끊겼거나 서버가 잠시 안 되면 들고 있고, 그 밖의 거절(내린 쪽지 등)은 버린다 */
+  async function notesSend() {
+    if (!N.pend.length || !notesOn()) return;
+    var id = uid(), list = N.pend.slice();
+    for (var i = 0; i < list.length; i++) {
+      try { await Api.readNote(list[i]); } catch (e) {
+        if (e.offline || e.sessionGone || !e.status || e.status >= 500 || e.status === 429) return;
+        if (noteGone(e)) { N.off = true; return; }
+      }
+      if (uid() !== id) return;
+      N.pend = N.pend.filter(function (x) { return x !== list[i]; });
+      notesSave();
+    }
+  }
+  async function notesPull() {
+    if (!notesOn()) return;
+    var id = uid();
+    await notesSend();
+    try {
+      var got = await Promise.all([Api.notes(), Api.noteReads(id)]);
+      if (uid() !== id || !Array.isArray(got[0])) return;
+      var rd = {};
+      (Array.isArray(got[1]) ? got[1] : []).forEach(function (r) { rd[r.note_id] = 1; });
+      N.pend.forEach(function (x) { rd[x] = 1; });
+      N.list = got[0];
+      N.read = rd;
+      notesSave();
+    } catch (e) {
+      if (noteGone(e)) N.off = true;      // 끊겼으면 받아 둔 쪽지를 그대로 보인다
+    }
+  }
+  function noteDate(ts) {
+    var d = new Date(ts || '');
+    if (isNaN(d.getTime())) return '';
+    var h = d.getHours(), m = d.getMinutes();
+    return (d.getMonth() + 1) + '월 ' + d.getDate() + '일 ' + (h < 12 ? '오전 ' : '오후 ') + (h % 12 || 12) + ':' + (m < 10 ? '0' : '') + m;
+  }
+  /* 첫 화면 맨 위 — 아직 확인 안 한 쪽지(새것이 위) */
+  function notesHTML() {
+    if (!notesOn()) return '';
+    var un = N.list.filter(function (n) { return !N.read[n.id]; });
+    if (!un.length) return '';
+    return '<section class="notes" aria-label="선생님 쪽지">' + un.map(function (n) {
+      return '<article class="note" data-note="' + esc(n.id) + '"><div class="note-h"><b>선생님 쪽지</b><span class="note-d">' + esc(noteDate(n.created_at)) + '</span></div>' +
+        '<p class="note-b">' + esc(n.body) + '</p><button class="btn ghost" data-act="note-ok" data-id="' + esc(n.id) + '">확인했어요</button></article>';
+    }).join('') + '</section>';
+  }
+  /* 내 정보 — 받은 쪽지 다시 보기(확인한 것까지 · 새것이 위) */
+  function myNotesHTML() {
+    if (!notesOn() || !N.list.length) return '';
+    return '<div class="card form"><h2 class="sec-h">받은 쪽지</h2><div class="mynotes">' + N.list.map(function (n) {
+      return '<div class="mynote" data-note="' + esc(n.id) + '"><span class="note-d">' + esc(noteDate(n.created_at)) + '</span><p>' + esc(n.body) + '</p></div>';
+    }).join('') + '</div></div>';
+  }
+  function noteOk(id) {
+    var n = Number(id);
+    if (!n || !notesOn()) return;
+    N.read[n] = 1;
+    if (N.pend.indexOf(n) < 0) N.pend.push(n);
+    notesSave();
+    softRender(true);
+    toast('쪽지는 내 정보에서 다시 볼 수 있어요');
+    notesSend().catch(noop);
   }
 
   function packRec(meta, data, school, subject) {
@@ -699,13 +791,13 @@
       if (p.blocked) return notice('지금은 자료를 볼 수 없어요', '선생님께 말해 주세요.');
       if (!p.school) return notice('학교가 정해지지 않았어요', isAdmin() ? '관리 화면에서 자료 판을 열어 볼 수 있어요.' : '선생님께 말해 주세요.');
       if (!A.pack) {
-        var head = '<header class="hero-lite"><p class="kicker">' + esc(schoolLabel(p.school)) + (A.subject ? ' · ' + esc(A.subject) : '') + '</p></header>';
+        var head = '<header class="hero-lite"><p class="kicker">' + esc(schoolLabel(p.school)) + (A.subject ? ' · ' + esc(A.subject) : '') + '</p></header>' + notesHTML();
         if (A.loading) return head + notice('잠시만요', '자료를 받는 중이에요.');
         if (A.offline) return head + notice('자료를 아직 못 받았어요', '인터넷이 연결되면 받아 올게요.');
         return head + notice('아직 올라온 자료가 없어요', '선생님이 자료를 올리면 여기에 나와요.');
       }
     }
-    var out = '';
+    var out = notesHTML();                                 // 0.13.0 선생님 쪽지 — 맨 위
     if (A.banner && !A.preview) {
       out += '<div class="newbar" role="status"><p><b>새 내용이 있어요</b>선생님이 자료를 새로 올렸어요.</p><button data-act="banner-ok">확인</button></div>';
     }
@@ -736,7 +828,7 @@
       '<dl class="info"><div><dt>이름</dt><dd>' + esc(p.name || '') + '</dd></div>' +
       '<div><dt>학교</dt><dd>' + esc(schoolLabel(p.school)) + '</dd></div>' +
       '<div><dt>메일</dt><dd>' + esc(p.email || (s.user && s.user.email) || '') + '</dd></div></dl>' +
-      setsHTML() +
+      myNotesHTML() + setsHTML() +
       (isAdmin() ? schoolFormHTML(p.school) : '') +
       '<form class="card form" id="pwform" novalidate><h2 class="sec-h">비밀번호 바꾸기</h2>' +
       fld('새 비밀번호', '<input type="password" name="pw" autocomplete="new-password">', '6자 이상') +
@@ -819,6 +911,7 @@
     A.banner = false; A.noProfile = false; A.hasLive = null; A.ui = null; A.prevRoute = null; A.listScroll = {};
     clearReview();
     await Sync.openUser('');
+    await notesOpen('');                                  // 쪽지 사본 · 못 보낸 읽음은 폰에 남겨 다시 로그인할 때 쓴다
     Admin.reset();
     setWm();
     go('login');
@@ -995,6 +1088,7 @@
     Api.touch().catch(noop);
     var before = sig();
     await choose(A.subject, true);
+    await notesPull();
     if (sig() !== before) softRender();
     Sync.flush().catch(noop);
   }
@@ -1073,6 +1167,7 @@
         if (A.pack && A.profile) Store.set('seen:' + uid() + '|' + A.profile.school + '|' + A.subject, A.pack.hash).catch(noop);
         A.banner = false; softRender(true); return;
       case 'logout': doLogout(); return;
+      case 'note-ok': noteOk(b.getAttribute('data-id')); return;
       case 'schools-again': loadSchools(); return;
       case 'subj':
         var v = b.getAttribute('data-v');

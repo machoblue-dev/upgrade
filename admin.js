@@ -6,13 +6,15 @@
       정렬(학교·이름 · 최근 접속 · 오래 안 연 · 학습시간 많은/적은 · 최근 가입 — 0.8.0)
    ③ 자료 판 — 학교·과목마다 판 목록 · 미리보기로 열기 · 공개 · 되돌리기(바로 전 지난 판 번호로 pack_publish)
    ④ 틀린 곳 알림 — 목록 · 처리 표시
+   ⑤ 쪽지(0.13.0) — 모든 학교 · 한 학교 · 학생 한 명에게 쪽지 보내기 · 보낸 쪽지마다 읽음 N / 받는 학생 M명 · 내리기
    화면 칸마다 data-* 로 숫자를 함께 적어 둔다 — 시험 스크립트가 화면 글이 아니라 이 값을 읽어 맞대 본다 */
 var Admin = (function () {
   'use strict';
   var app = null;       // app.js 가 넘겨준 도구 — state · schools · schoolLabel · go · toast · refresh · preview
   var S = {
     packs: null, profiles: null, reports: null, board: {}, cache: {},
-    loading: {}, err: {}, school: '', boardSort: '', stuSchool: '', stuSort: '', openStu: '', ask: '', repAll: false, busy: false
+    loading: {}, err: {}, school: '', boardSort: '', stuSchool: '', stuSort: '', openStu: '', ask: '', repAll: false, busy: false,
+    notes: null, noteReads: null, notesMissing: false, noteTo: '', noteWho: '', noteBody: ''   // 0.13.0 쪽지 — 받는 곳 · 받는 학생 · 쓰던 글(다시 그려도 안 지워진다)
   };
   var SEP = '␟', DAY = 86400000;
   var 칸이름 = [['지문', '지문'], ['핵심', '핵심'], ['서술형', '서술형'], ['어법', '어법'], ['단어', '단어']];
@@ -20,7 +22,7 @@ var Admin = (function () {
   function esc(s) { return Review.util.esc(s); }
   function enc(s) { return encodeURIComponent(String(s == null ? '' : s)); }
   function init(a) { app = a; }
-  function reset() { S.packs = S.profiles = S.reports = null; S.board = {}; S.cache = {}; S.loading = {}; S.err = {}; S.ask = ''; S.openStu = ''; }
+  function reset() { S.packs = S.profiles = S.reports = S.notes = S.noteReads = null; S.notesMissing = false; S.board = {}; S.cache = {}; S.loading = {}; S.err = {}; S.ask = ''; S.openStu = ''; }
 
   /* ---------- 불러오기 ---------- */
   function load(name, fn) {
@@ -55,6 +57,7 @@ var Admin = (function () {
     if (what === 'profiles') { S.profiles = null; S.board = {}; }
     if (what === 'packs') { S.packs = null; S.board = {}; }
     if (what === 'reports') S.reports = null;
+    if (what === 'notes') { S.notes = S.noteReads = null; }
   }
 
   /* ---------- 글 도움 ---------- */
@@ -94,7 +97,7 @@ var Admin = (function () {
   function headHTML(what) {
     if (!S.reports && !S.err.reports) load('reports', ensureReports);
     var n = S.reports ? S.reports.filter(function (r) { return !r.resolved; }).length : 0;
-    var tabs = [['board', '현황판'], ['students', '학생 관리'], ['packs', '자료 판'], ['reports', '틀린 곳 알림' + (n ? ' ' + n : '')]];
+    var tabs = [['board', '현황판'], ['students', '학생 관리'], ['packs', '자료 판'], ['reports', '틀린 곳 알림' + (n ? ' ' + n : '')], ['notes', '쪽지']];
     var cur = what === 'who' ? 'board' : what;
     return '<div class="a-head"><h1 class="page-h">관리</h1><button class="tb" data-act="a-reload">새로 고치기</button></div>' +
       '<nav class="chips anav" aria-label="관리 화면">' + tabs.map(function (t) {
@@ -108,6 +111,7 @@ var Admin = (function () {
     else if (what === 'students') body = studentsHTML();
     else if (what === 'packs') body = packsHTML();
     else if (what === 'reports') body = reportsHTML();
+    else if (what === 'notes') body = notesHTML();
     else { what = 'board'; body = boardHTML(parts[2] || ''); }
     return '<section class="admin">' + headHTML(what) + body + '</section>';
   }
@@ -403,6 +407,77 @@ var Admin = (function () {
     }).join('');
   }
 
+  /* ---------- ⑤ 쪽지(0.13.0 · 서버\261104_UPGRADE_쪽지.sql) ----------
+     받는 곳 — 모든 학교(school · user_id 둘 다 비움) · 한 학교(school) · 학생 한 명(user_id). 학교 전체 쪽지는 한 줄이라
+     나중에 가입한 학생에게도 보인다. 읽음은 note_reads 에서 센다. 서버에 표가 없으면(명령문 전) 안내만 띄운다 */
+  function noteMissing(e) { return !!e && (e.status === 404 || e.code === 'PGRST205' || e.code === '42P01'); }
+  async function ensureNotes() {
+    if (S.notes) return S.notes;
+    try {
+      var got = await Promise.all([Api.adminNotes(), Api.adminNoteReads()]);
+      S.noteReads = Array.isArray(got[1]) ? got[1] : [];
+      S.notes = Array.isArray(got[0]) ? got[0] : [];
+      S.notesMissing = false;
+    } catch (e) {
+      if (!noteMissing(e)) throw e;
+      S.notesMissing = true; S.notes = []; S.noteReads = [];
+    }
+    return S.notes;
+  }
+  function pupils() { return (S.profiles || []).filter(function (p) { return p.role !== 'admin'; }); }
+  /* 쪽지를 받는 학생 — 막힌 학생에게는 쪽지가 안 보이므로 세지 않는다 */
+  function noteAudience(n) {
+    return pupils().filter(function (p) {
+      if (p.blocked) return false;
+      if (n.user_id) return p.id === n.user_id;
+      return !n.school || p.school === n.school;
+    });
+  }
+  function noteTarget(n) {
+    if (n.user_id) { var p = profileOf(n.user_id); return p ? p.name + ' · ' + app.schoolLabel(p.school) : '학생 한 명'; }
+    return n.school ? app.schoolLabel(n.school) + ' 모두' : '모든 학교';
+  }
+  function noteFormHTML() {
+    var to = S.noteTo;
+    var studs = to ? pupils().filter(function (p) { return p.school === to; }) : [];
+    if (S.noteWho && !studs.some(function (p) { return p.id === S.noteWho; })) S.noteWho = '';
+    var n = noteAudience(S.noteWho ? { user_id: S.noteWho } : { school: to || null }).length;
+    return '<form class="card form" data-form="a-note"><h2 class="sec-h">쪽지 보내기</h2>' +
+      '<p class="hint">학생이 앱을 열면 첫 화면 맨 위에 보여요. 학생이 확인을 누르면 접혀요.</p>' +
+      '<div class="a-filters"><label class="fld"><span>받는 곳</span><select data-change="a-note-to"><option value="">모든 학교</option>' + schoolOptions(to, false) + '</select></label>' +
+      (to ? '<label class="fld"><span>받는 학생</span><select data-change="a-note-who"><option value="">이 학교 학생 모두</option>' + studs.map(function (p) {
+        return '<option value="' + esc(p.id) + '"' + (p.id === S.noteWho ? ' selected' : '') + '>' + esc(p.name) + (p.blocked ? ' (막힘)' : '') + '</option>';
+      }).join('') + '</select></label>' : '') + '</div>' +
+      '<label class="fld"><span>쪽지 내용</span><textarea name="body" rows="5" maxlength="1000" data-input="a-note">' + esc(S.noteBody) + '</textarea></label>' +
+      '<p class="sheet-n"><span data-note-n>' + S.noteBody.length + '</span> / 1000</p>' +
+      '<p class="a-sum" data-recv="' + n + '">받는 학생 ' + n + '명' + (S.noteWho ? '' : (S.profiles ? '' : ' (불러오는 중)')) + '</p>' +
+      '<p class="msg" role="alert"></p><button class="btn" type="submit">보내기</button></form>';
+  }
+  function notesHTML() {
+    if (!S.profiles && !S.err.profiles) load('profiles', ensureProfiles);
+    if (!S.notes) { if (!S.err.notes) load('notes', ensureNotes); return waitHTML('notes'); }
+    if (S.notesMissing) return '<div class="notice"><b>쪽지 기능이 아직 준비되지 않았어요</b><p>서버에 쪽지 표를 먼저 만들어 주세요.</p></div>';
+    var reads = {};
+    (S.noteReads || []).forEach(function (r) { (reads[r.note_id] = reads[r.note_id] || {})[r.user_id] = r.read_at; });
+    function names(list) { return list.map(function (p) { return esc(p.name); }).join(', '); }
+    var out = noteFormHTML() + '<h2 class="sec-h top-gap">보낸 쪽지</h2>';
+    if (!S.notes.length) return out + '<p class="empty">보낸 쪽지가 없어요</p>';
+    return out + S.notes.map(function (n) {
+      var aud = noteAudience(n), rd = reads[n.id] || {};
+      var got = aud.filter(function (p) { return rd[p.id]; }), yet = aud.filter(function (p) { return !rd[p.id]; });
+      var id = esc(n.id);
+      return '<article class="scard ncard" data-id="' + id + '" data-read="' + got.length + '" data-aud="' + aud.length + '"><div class="card-h"><span class="tag">' + esc(noteTarget(n)) + '</span>' +
+        '<span class="src">' + esc(ago(n.created_at)) + '</span></div>' +
+        '<p class="rbody">' + esc(n.body) + '</p>' +
+        '<p class="smeta">읽음 ' + got.length + ' / ' + aud.length + '명</p>' +
+        (aud.length > 1 ? '<details class="nread"><summary>누가 읽었나 보기</summary>' +
+          (got.length ? '<p class="smeta">읽음 — ' + names(got) + '</p>' : '') + (yet.length ? '<p class="smeta">아직 — ' + names(yet) + '</p>' : '') + '</details>' : '') +
+        '<button class="btn sm ghost" data-act="a-note-del" data-id="' + id + '">내리기</button>' +
+        (S.ask === 'note:' + n.id ? askHTML('이 쪽지를 내릴까요? 학생 화면에서 사라지고 읽음 기록도 지워져요.', 'a-note-del-yes', ' data-id="' + id + '"', '내리기') : '') +
+        '<p class="msg" data-msg="note:' + id + '" role="alert"></p></article>';
+    }).join('');
+  }
+
   /* ---------- 하기 ---------- */
   function msgEl(key) {
     var list = document.querySelectorAll('[data-msg]');
@@ -444,6 +519,7 @@ var Admin = (function () {
         if (w === 'packs') S.packs = null;
         if (w === 'profiles') S.profiles = null;
         if (w === 'reports') S.reports = null;
+        if (w === 'notes') S.notes = S.noteReads = null;
         if (w.indexOf('board:') === 0) { delete S.board[w.slice(6)]; S.packs = null; }
         app.refresh(true); return true;
       case 'a-open': S.openStu = S.openStu === uid ? '' : uid; S.ask = ''; app.refresh(true); return true;
@@ -464,6 +540,10 @@ var Admin = (function () {
         return true;
       case 'a-rep-open': S.repAll = false; app.refresh(true); return true;
       case 'a-rep-all': S.repAll = true; app.refresh(true); return true;
+      case 'a-note-del': S.ask = 'note:' + id; app.refresh(true); return true;
+      case 'a-note-del-yes':
+        run(function () { return Api.deleteNote(id); }, '쪽지를 내렸어요', 'notes', 'note:' + id);
+        return true;
     }
     return false;
   }
@@ -488,11 +568,22 @@ var Admin = (function () {
       var p = profileOf(uid);
       if (!p || form.elements.confirm.value.trim() !== p.name) { tell('이름을 그대로 쳐야 지울 수 있어요'); return true; }
       run(function () { return Api.rpc('admin_remove', { uid: uid }); }, '퇴원 처리했어요', 'profiles', uid);
+    } else if (kind === 'a-note') {
+      var body = String(form.elements.body.value || '').trim();
+      if (!body) { tell('쪽지 내용을 적어 주세요'); return true; }
+      var row = S.noteWho ? { user_id: S.noteWho, body: body } : { school: S.noteTo || null, body: body };
+      run(async function () { await Api.sendNote(row); S.noteBody = ''; }, '쪽지를 보냈어요', 'notes', say);
     }
     return true;
   }
 
   function input(el) {
+    if (el.getAttribute && el.getAttribute('data-input') === 'a-note') {
+      S.noteBody = el.value;
+      var nn = el.form && el.form.querySelector('[data-note-n]');
+      if (nn) nn.textContent = String(el.value.length);
+      return true;
+    }
     if (el.name === 'confirm' && el.hasAttribute('data-need')) {
       var btn = el.form && el.form.querySelector('button[type="submit"]');
       if (btn) btn.disabled = el.value.trim() !== el.getAttribute('data-need');
@@ -507,6 +598,8 @@ var Admin = (function () {
     if (c === 'a-stu-school') { S.stuSchool = el.value; S.openStu = ''; app.refresh(true); return true; }
     if (c === 'a-stu-sort') { S.stuSort = el.value; app.refresh(true); return true; }
     if (c === 'a-board-sort') { S.boardSort = el.value; app.refresh(true); return true; }
+    if (c === 'a-note-to') { S.noteTo = el.value; S.noteWho = ''; app.refresh(true); return true; }
+    if (c === 'a-note-who') { S.noteWho = el.value; app.refresh(true); return true; }
     return false;
   }
 

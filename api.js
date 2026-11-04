@@ -254,6 +254,15 @@ var Api = (function () {
     },
     /* 학생은 신고를 읽는 규칙이 없다 — select 를 붙이지 않는다 */
     report: function (row) { return call('POST', '/rest/v1/reports', row, { headers: prefMin }); },
+    /* 선생님 쪽지(0.13.0 · 서버\261104_UPGRADE_쪽지.sql) — 규칙이 나에게 온 것 · 내 학교 것 · 모든 학교 것만 준다.
+       읽음 기록은 내 것만 묻는다(관리자 계정은 규칙상 모두 보이므로 user_id 로 한 번 더 거른다) */
+    notes: function () { return call('GET', '/rest/v1/notes?select=id,school,user_id,body,created_at&order=created_at.desc&limit=30'); },
+    noteReads: function (uid) { return call('GET', '/rest/v1/note_reads?select=note_id&user_id=eq.' + q(uid)); },
+    /* 「확인」 — 이미 적힌 것은 그대로 둔다(두 폰에서 눌러도 오류가 안 나게) */
+    readNote: function (id) {
+      return call('POST', '/rest/v1/note_reads?on_conflict=note_id,user_id', { note_id: Number(id) },
+        { headers: { Prefer: 'resolution=ignore-duplicates,return=minimal' } });
+    },
 
     /* 관리자 */
     adminPacks: function () {
@@ -272,7 +281,11 @@ var Api = (function () {
     adminMarks: function (school) { return call('POST', '/rest/v1/rpc/admin_marks', { p_school: school }); },
     rpc: function (name, args) { return call('POST', '/rest/v1/rpc/' + name, args || {}); },
     adminReports: function () { return call('GET', '/rest/v1/reports?select=*&order=created_at.desc'); },
-    resolveReport: function (id) { return call('PATCH', '/rest/v1/reports?id=eq.' + q(id), { resolved: true }, { headers: prefMin }); }
+    resolveReport: function (id) { return call('PATCH', '/rest/v1/reports?id=eq.' + q(id), { resolved: true }, { headers: prefMin }); },
+    adminNotes: function () { return call('GET', '/rest/v1/notes?select=id,school,user_id,body,created_at&order=created_at.desc'); },
+    adminNoteReads: function () { return call('GET', '/rest/v1/note_reads?select=note_id,user_id,read_at'); },
+    sendNote: function (row) { return call('POST', '/rest/v1/notes', row, { headers: prefMin }); },
+    deleteNote: function (id) { return call('DELETE', '/rest/v1/notes?id=eq.' + q(id), undefined, { headers: prefMin }); }
   };
 })();
 

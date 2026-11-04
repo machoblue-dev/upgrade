@@ -1092,6 +1092,24 @@ html.picv-on,html.picv-on body{overflow:hidden;overscroll-behavior:none}
 /* 제목은 줄이 바뀔 때 두 줄 길이를 고르게(본문은 맨 위 body 의 keep-all 그대로) */
 .page-h,.sec-h,.ah,.grp-h,.blk>h3,.notice b{text-wrap:balance}
 
+/* ════════ 0.13.0 — 선생님 쪽지(261104 기원T 「학생이 접속하면 첫 화면에 쪽지 내용이 바로 보이도록」) ════════
+   첫 화면 맨 위 돋은 카드 — 이름 줄(파란 글씨 + 날짜) → 쪽지 글(줄바꿈 그대로) → 「확인했어요」. 0.11.0 색 칸만 써서 두 화면이 같은 모양이다 */
+.notes{display:grid;gap:12px;margin:4px 0 16px}
+.note{padding:18px 18px 16px;border-radius:22px;background:var(--card-bg);box-shadow:var(--sh)}
+.note-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.note-h b{font-size:14px;font-weight:800;color:var(--coral-ink)}
+.note-d{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.note-b{margin:8px 0 14px;font-size:16px;line-height:1.6;color:var(--ink);white-space:pre-wrap;overflow-wrap:anywhere}
+/* 내 정보 「받은 쪽지」 — 파인 칸에 날짜와 글 */
+.mynotes{display:grid;gap:10px}
+.mynote{padding:12px 14px;border-radius:14px;background:var(--sunk);box-shadow:var(--sh-sunk)}
+.mynote .note-d{display:block;margin-bottom:4px}
+.mynote p{margin:0;font-size:14.5px;line-height:1.55;color:var(--ink);white-space:pre-wrap;overflow-wrap:anywhere}
+/* 관리 「쪽지」 — 보낸 쪽지 카드 · 누가 읽었나 */
+.ncard .btn{margin-top:8px}
+.nread summary{cursor:pointer;margin-top:6px;font-size:13.5px;font-weight:700;color:var(--coral-ink)}
+.nread .smeta{overflow-wrap:anywhere}
+
 /* ════════ 0.12 — 움직임 「크게」(261103 기원T · 조금 · 중간 · 크게 세 단계 시안 가운데 「크게」) ════════
    색 · 글꼴 · 배치 · 문구는 그대로 두고 움직임만 얹는다. 기본 상태는 보이는 상태이고, 이름표(m-… · fx-…)는 app.js 가 붙였다 걷는다 —
    스크립트가 안 돌면 이름표가 안 붙어 움직임만 빠진다. transform · opacity · filter 만 움직인다(폰이 배치를 다시 재지 않게).
